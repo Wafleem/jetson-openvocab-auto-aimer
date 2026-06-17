@@ -1,0 +1,17 @@
+# jetson-openvocab-auto-aimer
+
+A voice-driven, open-vocabulary auto-aiming camera gimbal.
+
+Speak a target ("the red mug"). A **Jetson Orin Nano 8GB** runs NanoOWL
+(open-vocab detection on TensorRT) plus a PaliGemma VLM that sees the
+camera frame and the query, picks the target, and computes its pixel
+offset from frame center. That offset is sent over **UART** to an
+**STM32N6 Nucleo** running FreeRTOS, which closes two positional PID
+loops to drive a pan-tilt gimbal (two PWM servos) until the
+target is centered. Telemetry returns over the same link.
+
+## Layout
+- `jetson-perception/` — Python perception + control-target pipeline (Docker).
+- `stm32-gimbal/` — STM32CubeIDE/HAL firmware: UART, PID, PWM servos.
+- `docs/` — architecture, UART protocol, hardware notes, decisions.
+

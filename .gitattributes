@@ -1,0 +1,14 @@
+# Normalize line endings: text files use LF in the repo.
+* text=auto eol=lf
+
+# Shell scripts must stay LF.
+*.sh text eol=lf
+
+# Treat common binaries as binary (no eol munging).
+*.png binary
+*.jpg binary
+*.engine binary
+*.onnx binary
+*.bin binary
+*.hex binary
+*.elf binary

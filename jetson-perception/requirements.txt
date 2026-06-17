@@ -1,0 +1,7 @@
+# Python deps for the NanoOWL bring-up, NOT already in the Jetson/L4T base image.
+# torch, torchvision, tensorrt, torch2trt come from the container base / NanoOWL install
+# (see docker/Dockerfile) — do NOT pip-install them here.
+numpy
+Pillow
+opencv-python
+transformers   # used by NanoOWL for OWL-ViT text/image processing

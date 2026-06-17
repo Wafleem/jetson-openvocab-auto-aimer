@@ -1,0 +1,15 @@
+# STM32CubeIDE / build artifacts
+Debug/
+Release/
+build/
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+*.su
+
+# CubeIDE workspace metadata (keep the .project/.cproject + .ioc once they exist)
+.settings/

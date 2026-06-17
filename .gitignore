@@ -1,0 +1,42 @@
+# ---- Python (jetson-perception) ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
+
+# Model weights / TensorRT engines (large; fetched or built locally)
+jetson-perception/models/*
+!jetson-perception/models/.gitkeep
+*.engine
+*.plan
+*.onnx
+*.pth
+*.safetensors
+
+# ---- STM32 (stm32-gimbal) ----
+Debug/
+Release/
+build/
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+.settings/
+# CubeMX/CubeIDE local metadata is regenerated; keep the .ioc once it exists.
+
+# ---- Editors / OS ----
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
