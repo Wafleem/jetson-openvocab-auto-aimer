@@ -5,3 +5,6 @@ numpy
 Pillow
 opencv-python
 transformers   # used by NanoOWL for OWL-ViT text/image processing
+accelerate     # device_map="auto" for local PaliGemma inference
+sentencepiece  # tokenizer support for Gemma/PaliGemma-family checkpoints
+pytest         # local smoke/unit tests for lightweight parser code

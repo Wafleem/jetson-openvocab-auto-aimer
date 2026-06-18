@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 
@@ -47,6 +48,7 @@ def test_keeps_person_visual_description() -> None:
 
 
 def test_cli_outputs_json() -> None:
+    env = {**os.environ, "PYTHONPATH": "src"}
     completed = subprocess.run(
         [
             sys.executable,
@@ -58,6 +60,7 @@ def test_cli_outputs_json() -> None:
         ],
         check=True,
         capture_output=True,
+        env=env,
         text=True,
     )
 
