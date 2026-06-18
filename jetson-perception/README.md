@@ -20,7 +20,13 @@ The first text-only piece of the later voice pipeline turns natural commands int
 object prompts:
 
 ```bash
-PYTHONPATH=src python -m aimer.command_parse --backend heuristic "track the red mug"
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install -e ".[dev]"
+```
+
+```bash
+python -m aimer.command_parse --backend heuristic "track the red mug"
 ```
 
 Output is JSON. `primary_prompt` is the first prompt to feed NanoOWL, and `nanoowl_prompts`
@@ -39,13 +45,39 @@ available, falling back to the deterministic parser otherwise. Use `--backend pa
 PaliGemma:
 
 ```bash
-PYTHONPATH=src python -m aimer.command_parse --backend paligemma \
+python -m aimer.command_parse --backend paligemma \
     --model-id google/paligemma2-3b-mix-224 \
     "aim at the small red mug near the laptop"
 ```
 
+If installed editable in a venv, the console script is also available:
+
+```bash
+aimer-command-parse --backend heuristic "track the red mug"
+```
+
 Spatial relations such as `near the laptop` are returned as metadata for later target selection
 rather than being folded into the NanoOWL object prompt.
+
+Check local PaliGemma prerequisites and Hugging Face model access without downloading the full
+checkpoint:
+
+```bash
+python -m aimer.paligemma_preflight --model-id google/paligemma2-3b-mix-224
+```
+
+If installed editable in a venv:
+
+```bash
+aimer-paligemma-preflight --model-id google/paligemma2-3b-mix-224
+```
+
+Google PaliGemma checkpoints may require accepting model terms on Hugging Face and authenticating
+the Jetson before weights can be downloaded.
+
+On this Jetson, the local venv can import Torch/Transformers and sees the Orin GPU. The current
+Google PaliGemma checkpoints report `gated=manual`, so model weights require Hugging Face access
+approval before the `paligemma` backend can run end to end.
 
 ## Tests
 From `jetson-perception/`:

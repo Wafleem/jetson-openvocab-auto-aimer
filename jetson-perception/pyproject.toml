@@ -1,3 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jetson-openvocab-aimer"
+version = "0.1.0"
+description = "Jetson perception pipeline for an open-vocabulary auto-aiming camera gimbal"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "Pillow",
+  "opencv-python",
+  "transformers",
+  "accelerate",
+  "sentencepiece",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+aimer-command-parse = "aimer.command_parse:main"
+aimer-paligemma-preflight = "aimer.paligemma_preflight:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
