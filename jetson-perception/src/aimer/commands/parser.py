@@ -44,7 +44,8 @@ class CommandPromptParser:
                 result = self._heuristic.parse(command)
                 notes = [
                     *result.notes,
-                    f"PaliGemma unavailable; used heuristic parser instead: {exc}",
+                    "PaliGemma unavailable; used heuristic parser instead: "
+                    f"{type(exc).__name__}: {_summarize_exception(exc)}",
                 ]
                 return CommandPrompt(
                     raw_command=result.raw_command,
@@ -66,3 +67,10 @@ class CommandPromptParser:
             self._model_parser = PaliGemmaCommandParser(model_id=self.model_id)
 
         return self._model_parser.parse(command, image_path=image_path)
+
+
+def _summarize_exception(exc: Exception) -> str:
+    message = " ".join(str(exc).split())
+    if "gated repo" in message.lower() or "access to model" in message.lower():
+        return "model access is gated; authenticate with a Hugging Face token that has accepted the model terms"
+    return message[:240]

@@ -67,3 +67,20 @@ def test_cli_outputs_json() -> None:
     payload = json.loads(completed.stdout)
     assert payload["primary_prompt"] == "a green bottle"
     assert payload["target_phrase"] == "green bottle"
+
+
+def test_auto_backend_falls_back_with_concise_note(monkeypatch) -> None:
+    parser = CommandPromptParser(ParserBackend.AUTO)
+
+    def fail_paligemma(command: str, image_path: str | None):
+        raise RuntimeError("You are trying to access a gated repo.\nLong traceback-ish message")
+
+    monkeypatch.setattr(parser, "_parse_with_paligemma", fail_paligemma)
+    result = parser.parse("track the red mug")
+
+    assert result.parser == "heuristic"
+    assert result.primary_prompt == "a red mug"
+    assert result.notes == [
+        "PaliGemma unavailable; used heuristic parser instead: RuntimeError: "
+        "model access is gated; authenticate with a Hugging Face token that has accepted the model terms"
+    ]
