@@ -67,7 +67,7 @@ def _check_transformers() -> dict[str, Any]:
 
 def _check_huggingface_model(model_id: str) -> dict[str, Any]:
     try:
-        from huggingface_hub import HfApi
+        from huggingface_hub import HfApi, hf_hub_download
     except Exception as exc:
         return {"ok": False, "error": repr(exc)}
 
@@ -77,13 +77,39 @@ def _check_huggingface_model(model_id: str) -> dict[str, Any]:
         return {"ok": False, "error": repr(exc)}
 
     gated = info.gated
+    access_probe = _probe_hub_file_access(model_id, hf_hub_download)
     return {
-        "ok": gated in (False, None),
+        "ok": access_probe["ok"],
         "private": info.private,
         "gated": gated,
         "sha": info.sha,
         "file_count": len(info.siblings),
         "requires_hf_token": gated not in (False, None) or info.private,
+        "file_access": access_probe,
+    }
+
+
+def _probe_hub_file_access(model_id: str, hf_hub_download) -> dict[str, Any]:
+    try:
+        path = hf_hub_download(model_id, "config.json")
+    except Exception as exc:
+        message = " ".join(str(exc).split())
+        if "not in the authorized list" in message:
+            reason = "token is valid but the account has not been granted access to this gated model"
+        elif "gated repo" in message.lower() or "access to model" in message.lower():
+            reason = "model is gated; authenticate with a token after accepting model terms"
+        else:
+            reason = message[:240]
+        return {
+            "ok": False,
+            "filename": "config.json",
+            "reason": reason,
+        }
+
+    return {
+        "ok": True,
+        "filename": "config.json",
+        "cached_path": path,
     }
 
 
