@@ -75,9 +75,10 @@ aimer-paligemma-preflight --model-id google/paligemma2-3b-mix-224
 Google PaliGemma checkpoints may require accepting model terms on Hugging Face and authenticating
 the Jetson before weights can be downloaded.
 
-On this Jetson, the local venv can import Torch/Transformers and sees the Orin GPU. The current
-Google PaliGemma checkpoints report `gated=manual`, so model weights require Hugging Face access
-approval before the `paligemma` backend can run end to end.
+On this Jetson, the local venv can import Torch/Transformers and sees the Orin GPU. Google
+PaliGemma checkpoints report `gated=manual`, so model weights require Hugging Face access approval
+before the `paligemma` backend can run end to end. Keep `transformers<5` for now; Transformers 5.x
+failed to resolve the PaliGemma image processor in this environment.
 
 ## Tests
 From `jetson-perception/`:
