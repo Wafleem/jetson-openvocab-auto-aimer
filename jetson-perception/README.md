@@ -7,13 +7,23 @@ for the full system design.
 
 ## NanoOWL bring-up
 ```bash
-cd docker && ./run.sh                          # build image + drop into a shell
+cd docker && INSTALL_NANOOWL=1 ./run.sh        # build image + drop into a shell
 # inside the container:
 python scripts/build_engine.py                 # build the TensorRT engine -> /models
 python -m aimer.run_detect \
     --engine /models/owl_image_encoder_patch32.engine \
     --image test.jpg --prompts "a person, a red mug"
 ```
+
+For the lighter text-command/PaliGemma slice, leave NanoOWL out of the build:
+
+```bash
+cd docker && ./run.sh aimer-command-parse --backend heuristic "track the red mug"
+cd docker && ./run.sh aimer-paligemma-preflight --model-id google/paligemma2-3b-mix-224
+```
+
+`docker/run.sh` mounts `models/`, the host Hugging Face cache, and the host pip cache. It also
+passes `HF_TOKEN` through if that environment variable is set.
 
 ## Text command parsing
 The first text-only piece of the later voice pipeline turns natural commands into NanoOWL-ready

@@ -1,30 +1,36 @@
-# Jetson image for NanoOWL bring-up.
-# Base on an NVIDIA L4T image that already provides CUDA + TensorRT + PyTorch for your JetPack.
-# VERIFY the tag matches your JetPack/L4T before building.
-ARG L4T_BASE=nvcr.io/nvidia/l4t-pytorch:r36.2.0-pth2.2-py3
+# Jetson image for perception bring-up.
+# R36 L4T userspace is the latest broadly available nvcr.io tag here; the NVIDIA container runtime
+# mounts the host Jetson driver/userspace libraries at launch.
+ARG L4T_BASE=nvcr.io/nvidia/l4t-base:r36.2.0
 FROM ${L4T_BASE}
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /workspace
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3-pip git \
+        python3-pip python3-venv git build-essential libopenblas-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Python deps not already in the base image.
+# Python deps not already in the base image. Do not use --no-cache-dir here; a mounted pip cache
+# keeps repeated Jetson builds tolerable.
 COPY requirements.txt /workspace/requirements.txt
-RUN pip3 install --no-cache-dir -r /workspace/requirements.txt
+RUN pip3 install --break-system-packages -r /workspace/requirements.txt
 
 # --- NanoOWL + its torch2trt dependency ---
-# TODO: pin versions / follow upstream install notes.
+# Optional because torch2trt/nanoowl can be slow and brittle while iterating on the VLM/text slice.
 #   https://github.com/NVIDIA-AI-IOT/torch2trt
 #   https://github.com/NVIDIA-AI-IOT/nanoowl
-RUN pip3 install --no-cache-dir git+https://github.com/NVIDIA-AI-IOT/torch2trt \
-    && pip3 install --no-cache-dir git+https://github.com/NVIDIA-AI-IOT/nanoowl
+ARG INSTALL_NANOOWL=0
+RUN if [ "$INSTALL_NANOOWL" = "1" ]; then \
+        pip3 install --break-system-packages git+https://github.com/NVIDIA-AI-IOT/torch2trt \
+        && pip3 install --break-system-packages git+https://github.com/NVIDIA-AI-IOT/nanoowl ; \
+    fi
 
 COPY . /workspace/jetson-perception
 WORKDIR /workspace/jetson-perception
 ENV PYTHONPATH=/workspace/jetson-perception/src
+RUN pip3 install --break-system-packages -e . --no-deps
 
-# Default to an interactive shell; build the engine then run aimer.run_detect.
+# Default to an interactive shell.
 CMD ["bash"]
