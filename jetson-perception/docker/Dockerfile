@@ -11,11 +11,12 @@ WORKDIR /workspace
 RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-pip python3-venv git build-essential libopenblas-dev \
     && rm -rf /var/lib/apt/lists/*
+RUN pip3 install --upgrade pip setuptools wheel
 
 # Python deps not already in the base image. Do not use --no-cache-dir here; a mounted pip cache
 # keeps repeated Jetson builds tolerable.
 COPY requirements.txt /workspace/requirements.txt
-RUN pip3 install --break-system-packages -r /workspace/requirements.txt
+RUN pip3 install -r /workspace/requirements.txt
 
 # --- NanoOWL + its torch2trt dependency ---
 # Optional because torch2trt/nanoowl can be slow and brittle while iterating on the VLM/text slice.
@@ -23,14 +24,14 @@ RUN pip3 install --break-system-packages -r /workspace/requirements.txt
 #   https://github.com/NVIDIA-AI-IOT/nanoowl
 ARG INSTALL_NANOOWL=0
 RUN if [ "$INSTALL_NANOOWL" = "1" ]; then \
-        pip3 install --break-system-packages git+https://github.com/NVIDIA-AI-IOT/torch2trt \
-        && pip3 install --break-system-packages git+https://github.com/NVIDIA-AI-IOT/nanoowl ; \
+        pip3 install git+https://github.com/NVIDIA-AI-IOT/torch2trt \
+        && pip3 install git+https://github.com/NVIDIA-AI-IOT/nanoowl ; \
     fi
 
 COPY . /workspace/jetson-perception
 WORKDIR /workspace/jetson-perception
 ENV PYTHONPATH=/workspace/jetson-perception/src
-RUN pip3 install --break-system-packages -e . --no-deps
+RUN pip3 install -e . --no-deps
 
 # Default to an interactive shell.
 CMD ["bash"]
