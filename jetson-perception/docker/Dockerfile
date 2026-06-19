@@ -10,6 +10,8 @@ WORKDIR /workspace
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-pip python3-venv git build-essential libopenblas-dev \
+        python3-libnvinfer python3-libnvinfer-dev \
+        libnvinfer-dev libnvinfer-plugin-dev libnvonnxparsers-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN pip3 install --upgrade pip setuptools wheel
 
@@ -24,7 +26,7 @@ RUN pip3 install -r /workspace/requirements.txt
 #   https://github.com/NVIDIA-AI-IOT/nanoowl
 ARG INSTALL_NANOOWL=0
 RUN if [ "$INSTALL_NANOOWL" = "1" ]; then \
-        pip3 install git+https://github.com/NVIDIA-AI-IOT/torch2trt \
+        pip3 install --no-build-isolation git+https://github.com/NVIDIA-AI-IOT/torch2trt \
         && pip3 install git+https://github.com/NVIDIA-AI-IOT/nanoowl ; \
     fi
 
