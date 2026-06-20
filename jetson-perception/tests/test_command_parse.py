@@ -5,7 +5,10 @@ import os
 import subprocess
 import sys
 
+import pytest
+
 from aimer.commands import CommandPromptParser, ParserBackend
+from aimer.commands.paligemma import PaliGemmaCommandParser
 
 
 def test_simple_command_outputs_nanoowl_prompt() -> None:
@@ -84,3 +87,10 @@ def test_auto_backend_falls_back_with_concise_note(monkeypatch) -> None:
         "PaliGemma unavailable; used heuristic parser instead: RuntimeError: "
         "model access is gated; authenticate with a Hugging Face token that has accepted the model terms"
     ]
+
+
+def test_paligemma_requires_a_camera_frame_before_model_load() -> None:
+    parser = PaliGemmaCommandParser()
+
+    with pytest.raises(ValueError, match="pass a camera frame with --image"):
+        parser.parse("track the red mug")

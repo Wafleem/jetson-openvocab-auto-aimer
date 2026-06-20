@@ -1,18 +1,20 @@
 # jetson-perception
 
-Jetson Orin Nano 8GB perception. **Current milestone: get NanoOWL running** (open-vocab
-detection on TensorRT). The rest of the pipeline (PaliGemma VLM, voice, control-target, UART
-to the gimbal) is deferred — see the root [../AGENTS.md](../AGENTS.md) and [../docs/](../docs/)
-for the full system design.
+Jetson Orin Nano 8GB perception. NanoOWL TensorRT bring-up and text-command parsing are
+implemented. Camera streaming, voice, control-target, and UART integration remain deferred;
+see the root [../AGENTS.md](../AGENTS.md) and [../docs/](../docs/) for the full system design.
 
 ## NanoOWL bring-up
+
 ```bash
-cd docker && INSTALL_NANOOWL=1 ./run.sh        # build image + drop into a shell
+cd jetson-perception
+AIMER_IMAGE=aimer:nanoowl INSTALL_NANOOWL=1 ./docker/run.sh
 # inside the container:
-python scripts/build_engine.py                 # build the TensorRT engine -> /models
+python scripts/build_engine.py --output /models/owl_image_encoder_patch32.engine
 python -m aimer.run_detect \
     --engine /models/owl_image_encoder_patch32.engine \
-    --image test.jpg --prompts "a person, a red mug"
+    --image /workspace/jetson-perception/path/to/frame.jpg \
+    --prompts "a person, a red mug"
 ```
 
 For the lighter text-command/PaliGemma slice, leave NanoOWL out of the build:
@@ -52,13 +54,19 @@ contains fallbacks:
 
 Use `--backend auto` to prefer the local PaliGemma backend when model dependencies and weights are
 available, falling back to the deterministic parser otherwise. Use `--backend paligemma` to require
-PaliGemma:
+PaliGemma. PaliGemma requires a real camera frame or photo:
 
 ```bash
-python -m aimer.command_parse --backend paligemma \
+AIMER_IMAGE=aimer:nanoowl INSTALL_NANOOWL=1 ./docker/run.sh aimer-command-parse \
+    --backend paligemma \
     --model-id google/paligemma2-3b-mix-224 \
+    --image /workspace/jetson-perception/path/to/frame.jpg \
     "aim at the small red mug near the laptop"
 ```
+
+The first PaliGemma run downloads the checkpoint into the mounted Hugging Face cache. Its JSON
+`primary_prompt` is ready for NanoOWL; spatial context remains separate for later target
+selection.
 
 If installed editable in a venv, the console script is also available:
 
@@ -82,13 +90,10 @@ If installed editable in a venv:
 aimer-paligemma-preflight --model-id google/paligemma2-3b-mix-224
 ```
 
-Google PaliGemma checkpoints may require accepting model terms on Hugging Face and authenticating
-the Jetson before weights can be downloaded.
-
-On this Jetson, the local venv can import Torch/Transformers and sees the Orin GPU. Google
-PaliGemma checkpoints report `gated=manual`, so model weights require Hugging Face access approval
-before the `paligemma` backend can run end to end. Keep `transformers<5` for now; Transformers 5.x
-failed to resolve the PaliGemma image processor in this environment.
+Google PaliGemma checkpoints require accepting model terms on Hugging Face and authenticating the
+Jetson before weights can be downloaded. The preflight verifies model access, Transformers support,
+and CUDA visibility without downloading the full checkpoint. Keep `transformers<5` for now;
+Transformers 5.x failed to resolve the PaliGemma image processor in this environment.
 
 ## Tests
 From `jetson-perception/`:
@@ -106,4 +111,4 @@ python -m pytest -q
 - `docker/` — Dockerfile (L4T + NanoOWL) and `run.sh`.
 - `models/` — engines/weights (gitignored).
 
-**Status:** scaffold — `detector.py` internals are TODO. See [AGENTS.md](AGENTS.md).
+**Status:** NanoOWL static-image detection and text-command parsing are ready for hardware testing.

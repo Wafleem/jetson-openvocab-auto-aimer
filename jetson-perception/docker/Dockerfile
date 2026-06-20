@@ -25,7 +25,8 @@ RUN pip3 install --upgrade pip setuptools wheel
 COPY requirements.txt /workspace/requirements.txt
 RUN pip3 install -r /workspace/requirements.txt
 
-RUN apt-get update && apt-get install -y --no-install-recommends libcudla-12-2 \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libcudla-12-2 libnvinfer-bin \
     && printf "/usr/lib/aarch64-linux-gnu/nvidia\n" \
         > /etc/ld.so.conf.d/nvidia-l4t.conf \
     && ldconfig \
@@ -37,13 +38,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends libcudla-12-2 \
 #   https://github.com/NVIDIA-AI-IOT/nanoowl
 ARG INSTALL_NANOOWL=0
 RUN if [ "$INSTALL_NANOOWL" = "1" ]; then \
-        pip3 install torchvision \
+        pip3 install onnx torchvision \
         && mkdir -p /tmp/tensorrt-metadata \
         && printf '__version__ = "8.6.2"\n' > /tmp/tensorrt-metadata/tensorrt.py \
         && PYTHONPATH=/tmp/tensorrt-metadata \
-            pip3 install --no-build-isolation git+https://github.com/NVIDIA-AI-IOT/torch2trt \
+            pip3 install --no-build-isolation git+https://github.com/NVIDIA-AI-IOT/torch2trt@4e820ae31b4e35d59685935223b05b2e11d47b03 \
         && rm -rf /tmp/tensorrt-metadata \
-        && pip3 install git+https://github.com/NVIDIA-AI-IOT/nanoowl ; \
+        && pip3 install git+https://github.com/NVIDIA-AI-IOT/nanoowl@fb553dee4c58f8c53ec2bf01f355a54648e67dbd \
+        && sed -i 's/opset_version=onnx_opset/opset_version=onnx_opset,\n            dynamo=False/' \
+            /usr/local/lib/python3.10/dist-packages/nanoowl/owl_predictor.py ; \
     fi
 
 COPY . /workspace/jetson-perception

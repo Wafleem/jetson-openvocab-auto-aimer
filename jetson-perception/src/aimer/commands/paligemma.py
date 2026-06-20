@@ -49,6 +49,9 @@ class PaliGemmaCommandParser:
         self._model = None
 
     def parse(self, command: str, image_path: str | None = None) -> CommandPrompt:
+        if image_path is None:
+            raise ValueError("PaliGemma requires an image; pass a camera frame with --image")
+
         self._load()
         prompt = f"{_INSTRUCTION}\nUser command: {command}\nJSON:"
         inputs = self._build_inputs(prompt, image_path=image_path)
