@@ -10,8 +10,8 @@ see the root [../AGENTS.md](../AGENTS.md) and [../docs/](../docs/) for the full 
 cd jetson-perception
 AIMER_IMAGE=aimer:nanoowl INSTALL_NANOOWL=1 ./docker/run.sh
 # inside the container:
-python scripts/build_engine.py --output /models/owl_image_encoder_patch32.engine
-python -m aimer.run_detect \
+python3 scripts/build_engine.py --output /models/owl_image_encoder_patch32.engine
+python3 -m aimer.run_detect \
     --engine /models/owl_image_encoder_patch32.engine \
     --image /workspace/jetson-perception/path/to/frame.jpg \
     --prompts "a person, a red mug"
@@ -28,33 +28,92 @@ cd docker && ./run.sh aimer-paligemma-preflight --model-id google/paligemma2-3b-
 passes `HF_TOKEN` through if that environment variable is set.
 
 ## Text command parsing
-The first text-only piece of the later voice pipeline turns natural commands into NanoOWL-ready
-object prompts:
+
+The command parser turns a natural-language camera command into a compact object description that
+NanoOWL can detect. It removes action words and conversational filler, preserves useful visual
+attributes, and separates spatial context for the later target-selection stage.
+
+### Quick start: container
+
+Run this from `jetson-perception/` on the Jetson:
+
+```bash
+cd /home/safal/Documents/jetson-openvocab-auto-aimer/jetson-perception
+
+AIMER_IMAGE=aimer:nanoowl INSTALL_NANOOWL=1 ./docker/run.sh \
+    aimer-command-parse --backend heuristic \
+    "uh, could you please point the camera at the small red mug beside the laptop?"
+```
+
+The first invocation checks/builds the image; Docker reuses its cached layers afterward. The
+`heuristic` backend is deterministic, does not download a model, and is the recommended way to
+exercise the parser by itself.
+
+Example output:
+
+```json
+{
+  "attributes": ["small", "red"],
+  "confidence": 0.55,
+  "nanoowl_prompts": ["a small red mug", "small red mug"],
+  "notes": [
+    "Spatial context kept out of NanoOWL prompt for later target selection."
+  ],
+  "parser": "heuristic",
+  "primary_prompt": "a small red mug",
+  "raw_command": "uh, could you please point the camera at the small red mug beside the laptop?",
+  "spatial_context": "beside the laptop",
+  "target_phrase": "small red mug"
+}
+```
+
+The important fields are:
+
+- `primary_prompt`: the preferred text prompt to pass to NanoOWL.
+- `nanoowl_prompts`: the preferred prompt followed by useful fallback wording.
+- `target_phrase`: the extracted visual object without an added article.
+- `attributes`: visual details retained from the command, such as color, size, or material.
+- `spatial_context`: relationships kept out of the detector prompt for later target selection.
+- `parser`: identifies whether the heuristic or PaliGemma backend produced the result.
+
+Try a few command styles:
+
+```bash
+AIMER_IMAGE=aimer:nanoowl INSTALL_NANOOWL=1 ./docker/run.sh \
+    aimer-command-parse --backend heuristic "track the green bottle"
+
+AIMER_IMAGE=aimer:nanoowl INSTALL_NANOOWL=1 ./docker/run.sh \
+    aimer-command-parse --backend heuristic "follow the person in the blue shirt"
+
+AIMER_IMAGE=aimer:nanoowl INSTALL_NANOOWL=1 ./docker/run.sh \
+    aimer-command-parse --backend heuristic \
+    "um, can you like focus on the large silver thermos near the monitor?"
+```
+
+### Local development
+
+The lightweight parser can also run outside Docker. From `jetson-perception/`:
 
 ```bash
 python -m venv .venv
 . .venv/bin/activate
 python -m pip install -e ".[dev]"
-```
-
-```bash
 python -m aimer.command_parse --backend heuristic "track the red mug"
 ```
 
-Output is JSON. `primary_prompt` is the first prompt to feed NanoOWL, and `nanoowl_prompts`
-contains fallbacks:
+The editable install also provides the shorter console command:
 
-```json
-{
-  "primary_prompt": "a red mug",
-  "target_phrase": "red mug",
-  "nanoowl_prompts": ["a red mug", "red mug"]
-}
+```bash
+aimer-command-parse --backend heuristic "track the red mug"
 ```
 
-Use `--backend auto` to prefer the local PaliGemma backend when model dependencies and weights are
-available, falling back to the deterministic parser otherwise. Use `--backend paligemma` to require
-PaliGemma. PaliGemma requires a real camera frame or photo:
+### Parser backends
+
+- `--backend heuristic` always uses the fast deterministic parser.
+- `--backend paligemma` requires local PaliGemma inference and fails if it cannot run.
+- `--backend auto` tries PaliGemma first and reports a heuristic fallback in `notes` if unavailable.
+
+PaliGemma must receive a real camera frame or photograph because it is an image-and-text model:
 
 ```bash
 AIMER_IMAGE=aimer:nanoowl INSTALL_NANOOWL=1 ./docker/run.sh aimer-command-parse \
@@ -66,16 +125,8 @@ AIMER_IMAGE=aimer:nanoowl INSTALL_NANOOWL=1 ./docker/run.sh aimer-command-parse 
 
 The first PaliGemma run downloads the checkpoint into the mounted Hugging Face cache. Its JSON
 `primary_prompt` is ready for NanoOWL; spatial context remains separate for later target
-selection.
-
-If installed editable in a venv, the console script is also available:
-
-```bash
-aimer-command-parse --backend heuristic "track the red mug"
-```
-
-Spatial relations such as `near the laptop` are returned as metadata for later target selection
-rather than being folded into the NanoOWL object prompt.
+selection. The PaliGemma path is currently a hardware test path; the heuristic parser is the
+validated standalone demonstration.
 
 Check local PaliGemma prerequisites and Hugging Face model access without downloading the full
 checkpoint:
