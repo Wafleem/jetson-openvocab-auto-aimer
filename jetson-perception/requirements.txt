@@ -1,7 +1,11 @@
 # Python deps for the NanoOWL bring-up, NOT already in the Jetson/L4T base image.
-# torch, torchvision, tensorrt, torch2trt come from the container base / NanoOWL install
-# (see docker/Dockerfile) — do NOT pip-install them here.
+# In the Docker path, torch/torchvision/tensorrt/torch2trt should come from the L4T base image
+# and NanoOWL install (see docker/Dockerfile). In a bare Jetson venv, accelerate may resolve a
+# Jetson-compatible torch wheel as a dependency; verify it with aimer-paligemma-preflight.
 numpy
 Pillow
 opencv-python
-transformers   # used by NanoOWL for OWL-ViT text/image processing
+transformers<5 # used by NanoOWL and PaliGemma; 5.x misloads PaliGemma processors here
+accelerate     # device_map="auto" for local PaliGemma inference
+sentencepiece  # tokenizer support for Gemma/PaliGemma-family checkpoints
+pytest         # local smoke/unit tests for lightweight parser code
