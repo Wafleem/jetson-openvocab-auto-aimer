@@ -8,11 +8,15 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /workspace
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN printf "deb https://repo.download.nvidia.com/jetson/t234 r36.2 main\n" \
+        > /etc/apt/sources.list.d/nvidia-t234.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
         python3-pip python3-venv git build-essential libopenblas-dev \
         python3-libnvinfer python3-libnvinfer-dev \
         libnvinfer-dev libnvinfer-plugin-dev libnvonnxparsers-dev \
-        nvidia-l4t-dla-compiler \
+    && apt-get download nvidia-l4t-dla-compiler \
+    && dpkg-deb -x nvidia-l4t-dla-compiler_*.deb / \
+    && rm -f nvidia-l4t-dla-compiler_*.deb \
     && rm -rf /var/lib/apt/lists/*
 RUN pip3 install --upgrade pip setuptools wheel
 
@@ -21,13 +25,24 @@ RUN pip3 install --upgrade pip setuptools wheel
 COPY requirements.txt /workspace/requirements.txt
 RUN pip3 install -r /workspace/requirements.txt
 
+RUN apt-get update && apt-get install -y --no-install-recommends libcudla-12-2 \
+    && printf "/usr/lib/aarch64-linux-gnu/nvidia\n" \
+        > /etc/ld.so.conf.d/nvidia-l4t.conf \
+    && ldconfig \
+    && rm -rf /var/lib/apt/lists/*
+
 # --- NanoOWL + its torch2trt dependency ---
 # Optional because torch2trt/nanoowl can be slow and brittle while iterating on the VLM/text slice.
 #   https://github.com/NVIDIA-AI-IOT/torch2trt
 #   https://github.com/NVIDIA-AI-IOT/nanoowl
 ARG INSTALL_NANOOWL=0
 RUN if [ "$INSTALL_NANOOWL" = "1" ]; then \
-        pip3 install --no-build-isolation git+https://github.com/NVIDIA-AI-IOT/torch2trt \
+        pip3 install torchvision \
+        && mkdir -p /tmp/tensorrt-metadata \
+        && printf '__version__ = "8.6.2"\n' > /tmp/tensorrt-metadata/tensorrt.py \
+        && PYTHONPATH=/tmp/tensorrt-metadata \
+            pip3 install --no-build-isolation git+https://github.com/NVIDIA-AI-IOT/torch2trt \
+        && rm -rf /tmp/tensorrt-metadata \
         && pip3 install git+https://github.com/NVIDIA-AI-IOT/nanoowl ; \
     fi
 
