@@ -27,7 +27,7 @@ EOF
 
 container() {
     mkdir -p models "$CACHE"
-    "${DOCKER[@]}" run --rm --device nvidia.com/gpu=all \
+    "${DOCKER[@]}" run --rm --device nvidia.com/gpu=all --ipc host \
         -v "$(pwd)/models:/models" \
         -v "$CACHE:/root/.cache/huggingface" \
         "$@"

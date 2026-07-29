@@ -19,7 +19,7 @@ def build_engine() -> None:
         onnx_opset=17,
     )
 
-    if not Path(ENGINE).is_file():
+    if not Path(ENGINE).is_file() or Path(ENGINE).stat().st_size == 0:
         raise RuntimeError(f"NanoOWL did not create {ENGINE}")
     print(f"Engine ready: {ENGINE}")
 
