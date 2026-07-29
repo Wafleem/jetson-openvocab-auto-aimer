@@ -1,4 +1,5 @@
 # NanoOWL TensorRT engine(s) live here at runtime (mounted at /models in the container).
-# Gitignored except this placeholder. Build with scripts/build_engine.py, e.g.:
+# Gitignored except this placeholder. Build the TensorRT engine with:
+# ./run.sh engine
 #   owl_image_encoder_patch32.engine
 # Do NOT commit large engine/weight files.
