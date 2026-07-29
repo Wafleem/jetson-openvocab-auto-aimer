@@ -13,6 +13,7 @@ The complete beginner-facing workflow is:
 ./run.sh setup
 ./run.sh engine
 ./run.sh detect path/to/photo.jpg "a person,a red mug"
+./run.sh camera "a person,a red mug"
 ```
 
 ## Files

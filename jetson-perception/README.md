@@ -19,6 +19,17 @@ This setup targets the Jetson's current JetPack 7 / L4T R39 software.
 
 Later runs only need the `detect` command.
 
+## CSI camera
+
+After enabling the IMX219 camera overlay and rebooting the Jetson:
+
+```bash
+./run.sh camera "a person,a red mug"
+```
+
+This captures one real frame to `models/camera.jpg` and runs detection on it. There is no fake
+camera fallback: the command stops with an error if the CSI sensor does not produce a frame.
+
 ## Files
 
 | File | Purpose |

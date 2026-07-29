@@ -19,6 +19,7 @@ NanoOWL commands:
   ./run.sh setup
   ./run.sh engine
   ./run.sh detect PHOTO "a person,a red mug"
+  ./run.sh camera "a person,a red mug"
   ./run.sh shell
 
 Run them in that order the first time.
@@ -40,6 +41,20 @@ require_setup() {
     fi
 }
 
+require_engine() {
+    if [[ ! -s "$ENGINE" ]]; then
+        echo "TensorRT engine is missing. Run: ./run.sh engine" >&2
+        exit 1
+    fi
+}
+
+detect_photo() {
+    local photo="$1"
+    local prompts="$2"
+    container -v "$photo:/input/image:ro" "$IMAGE" \
+        python3 /app/aimer.py detect /input/image "$prompts"
+}
+
 case "${1:-}" in
     setup)
         "${DOCKER[@]}" build -t "$IMAGE" .
@@ -58,13 +73,29 @@ case "${1:-}" in
             echo "Photo not found: $2" >&2
             exit 1
         fi
-        if [[ ! -f "$ENGINE" ]]; then
-            echo "TensorRT engine is missing. Run: ./run.sh engine" >&2
+        require_engine
+        PHOTO="$(realpath "$2")"
+        detect_photo "$PHOTO" "$3"
+        ;;
+    camera)
+        require_setup
+        require_engine
+        if [[ $# -ne 2 ]]; then
+            usage
             exit 1
         fi
-        PHOTO="$(realpath "$2")"
-        container -v "$PHOTO:/input/image:ro" "$IMAGE" \
-            python3 /app/aimer.py detect /input/image "$3"
+        PHOTO="$(pwd)/models/camera.jpg"
+        gst-launch-1.0 -q -e \
+            nvarguscamerasrc sensor-id=0 num-buffers=1 ! \
+            'video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1' ! \
+            nvvidconv ! 'video/x-raw,format=I420' ! jpegenc ! \
+            filesink location="$PHOTO"
+        if [[ ! -s "$PHOTO" ]]; then
+            echo "The CSI camera did not produce a frame. Check the ribbon cable and reboot after enabling the camera overlay." >&2
+            exit 1
+        fi
+        echo "Captured: $PHOTO"
+        detect_photo "$PHOTO" "$2"
         ;;
     shell)
         require_setup
