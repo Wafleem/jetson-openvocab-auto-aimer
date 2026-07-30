@@ -19,11 +19,35 @@ NanoOWL commands:
   ./run.sh setup
   ./run.sh engine
   ./run.sh detect PHOTO "a person,a red mug"
+  ./run.sh camera-check
   ./run.sh camera "a person,a red mug"
   ./run.sh shell
 
 Run them in that order the first time.
 EOF
+}
+
+camera_check() {
+    if compgen -G '/dev/video*' >/dev/null; then
+        echo "CSI camera found:"
+        ls -1 /dev/video*
+        return 0
+    fi
+
+    echo "No CSI video device was found."
+    local kernel_log
+    kernel_log="$(dmesg 2>/dev/null || sudo dmesg 2>/dev/null || true)"
+    if grep -qE 'imx219 .*error during i2c read probe \(-121\)' <<<"$kernel_log"; then
+        cat <<'EOF'
+CAM1 is configured for an IMX219, but the sensor did not answer over I2C.
+Shut the Jetson down completely, disconnect power, and reseat both ribbon ends.
+On the Jetson's 22-pin connector, the ribbon's gold contacts must face the board.
+Then reconnect power, boot, and run: ./run.sh camera-check
+EOF
+    else
+        echo "Check that the IMX219 CAM1 overlay is enabled, then reboot."
+    fi
+    return 1
 }
 
 container() {
@@ -77,13 +101,17 @@ case "${1:-}" in
         PHOTO="$(realpath "$2")"
         detect_photo "$PHOTO" "$3"
         ;;
+    camera-check)
+        camera_check
+        ;;
     camera)
-        require_setup
-        require_engine
         if [[ $# -ne 2 ]]; then
             usage
             exit 1
         fi
+        camera_check
+        require_setup
+        require_engine
         PHOTO="$(pwd)/models/camera.jpg"
         gst-launch-1.0 -q -e \
             nvarguscamerasrc sensor-id=0 num-buffers=1 ! \
