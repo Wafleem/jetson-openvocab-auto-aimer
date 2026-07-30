@@ -55,14 +55,11 @@ def detect(image_path: str, prompt_text: str, threshold: float) -> None:
 
 def live(prompt_text: str, threshold: float) -> None:
     import os
-    import time
-
     import cv2
-    import numpy as np
     import torch
-    from nanoowl.owl_drawing import draw_owl_output
     from nanoowl.owl_predictor import OwlPredictor
     from PIL import Image
+    from targeting import Detection, TargetTracker, box_center, solve_aim
 
     prompts = [prompt.strip() for prompt in prompt_text.split(",") if prompt.strip()]
     if not prompts:
@@ -94,14 +91,21 @@ def live(prompt_text: str, threshold: float) -> None:
     predictor = OwlPredictor(model_name=MODEL, image_encoder_engine=ENGINE)
     text_encodings = predictor.encode_text(prompts)
     inference_stream = torch.cuda.Stream()
+    tracker = TargetTracker()
 
     window = "NanoOWL Live"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(window, 1280, 720)
-    print("Local live window ready. Press Q or Esc to stop.", flush=True)
+    selection: dict[str, tuple[int, int] | None] = {"point": None}
 
-    last_output = None
-    last_seen = 0.0
+    def select_target(event: int, x: int, y: int, _flags: int, _data: object) -> None:
+        if event == cv2.EVENT_LBUTTONDOWN:
+            selection["point"] = (x, y)
+
+    cv2.setMouseCallback(window, select_target)
+    print("Local live window ready.", flush=True)
+    print("Click a detection to lock it. Press R to reset, Q or Esc to stop.", flush=True)
+
     try:
         while True:
             ok, frame = camera.read()
@@ -119,23 +123,79 @@ def live(prompt_text: str, threshold: float) -> None:
                     )
             inference_stream.synchronize()
 
-            now = time.monotonic()
-            if len(output.labels):
-                last_output = output
-                last_seen = now
-            output_to_draw = output
-            if not len(output.labels) and last_output is not None and now - last_seen < 0.25:
-                output_to_draw = last_output
+            detections = [
+                Detection(
+                    int(label),
+                    float(score),
+                    tuple(float(coordinate) for coordinate in box),
+                )
+                for label, score, box in zip(output.labels, output.scores, output.boxes)
+            ]
+            point = selection["point"]
+            if point is not None:
+                under_pointer = [
+                    detection
+                    for detection in detections
+                    if detection.box[0] <= point[0] <= detection.box[2]
+                    and detection.box[1] <= point[1] <= detection.box[3]
+                ]
+                if under_pointer:
+                    tracker.lock(max(under_pointer, key=lambda detection: detection.score))
+                selection["point"] = None
 
-            annotated = draw_owl_output(
-                image,
-                output_to_draw,
-                text=prompts,
-                draw_text=True,
+            frame_height, frame_width = frame.shape[:2]
+            tracker.update(detections, (frame_width, frame_height))
+            solution = solve_aim(
+                tracker.box if tracker.aim_valid else None,
+                frame_width,
+                frame_height,
             )
-            display_frame = cv2.cvtColor(np.asarray(annotated), cv2.COLOR_RGB2BGR)
+
+            display_frame = frame.copy()
+            for detection in detections:
+                x1, y1, x2, y2 = (round(value) for value in detection.box)
+                cv2.rectangle(display_frame, (x1, y1), (x2, y2), (150, 150, 150), 1)
+
+            camera_center = (frame_width // 2, frame_height // 2)
+            cv2.drawMarker(display_frame, camera_center, (0, 255, 0), cv2.MARKER_CROSS, 28, 2)
+            cv2.rectangle(
+                display_frame,
+                (camera_center[0] - 20, camera_center[1] - 20),
+                (camera_center[0] + 20, camera_center[1] + 20),
+                (0, 180, 0),
+                1,
+            )
+
+            if tracker.box is not None:
+                colors = {
+                    "TENTATIVE": (0, 215, 255),
+                    "TRACKING": (255, 0, 180),
+                    "COASTING": (0, 140, 255),
+                    "LOST": (0, 0, 255),
+                }
+                color = colors.get(tracker.state, (180, 180, 180))
+                x1, y1, x2, y2 = (round(value) for value in tracker.box)
+                target_center = tuple(round(value) for value in box_center(tracker.box))
+                cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 3)
+                cv2.circle(display_frame, target_center, 6, color, -1)
+                cv2.line(display_frame, camera_center, target_center, color, 2)
+
+            track_name = f"TARGET {tracker.track_id}" if tracker.track_id is not None else "NO TARGET"
+            aim_text = f"dx={solution.dx:+d}  dy={solution.dy:+d}" if solution.valid else "aim paused"
+            cv2.putText(
+                display_frame,
+                f"{track_name}  {tracker.state}  {aim_text}",
+                (18, 32),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.75,
+                (255, 255, 255),
+                2,
+                cv2.LINE_AA,
+            )
             cv2.imshow(window, display_frame)
             key = cv2.waitKey(1) & 0xFF
+            if key == ord("r"):
+                tracker.reset()
             if key in (ord("q"), 27) or cv2.getWindowProperty(window, cv2.WND_PROP_VISIBLE) < 1:
                 break
     except KeyboardInterrupt:

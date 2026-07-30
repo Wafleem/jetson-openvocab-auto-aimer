@@ -4,8 +4,8 @@ Read the root `../AGENTS.md` first.
 
 ## Current milestone
 
-Get NanoOWL working on real photos and a real CSI camera stream. Do not add voice, PaliGemma,
-tracking, or UART until live detection works on the Jetson.
+Get NanoOWL working on real photos and maintain one target in a real CSI camera stream. Do not
+add voice, PaliGemma, UART, or servo output until target locking works on the Jetson.
 
 The complete beginner-facing workflow is:
 

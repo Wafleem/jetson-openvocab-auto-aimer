@@ -47,8 +47,12 @@ intercept the Argus camera stream.
 ./run.sh live "a computer mouse"
 ```
 
-A local `NanoOWL Live` window opens when the model is ready. NanoOWL stays loaded and draws
-boxes continuously. Press `Q`, `Esc`, or close the window to stop it.
+A local `NanoOWL Live` window opens when the model is ready. NanoOWL automatically locks a
+stable detection; click a particular box to choose it instead. The window shows the camera
+center, target center, and signed `dx`/`dy` pixel error. Press `R` to release a lost target,
+or press `Q`, `Esc`, or close the window to stop it.
+
+The tracking and future servo handoff are explained in [TRACKING.md](TRACKING.md).
 
 If `camera-check` reports I2C error `-121`, shut down and remove power before reseating the
 ribbon. The gold contacts on the Jetson's 22-pin connector must face the board.
