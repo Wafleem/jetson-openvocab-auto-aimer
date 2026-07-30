@@ -43,7 +43,24 @@ RUN apt-get update \
         python3-opencv \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libwayland-egl1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && install -d -m 0700 /tmp/runtime-root
+
+RUN PYTHON_PACKAGES="$(python3 -c \
+        'import sysconfig; print(sysconfig.get_paths()["purelib"])')" \
+    && NANOOWL_FILE="$PYTHON_PACKAGES/nanoowl/owl_predictor.py" \
+    && IMAGE_PREPROCESSOR_FILE="$PYTHON_PACKAGES/nanoowl/image_preprocessor.py" \
+    && sed -i \
+        '/torch.linspace(0\., 1\., self\.image_size)$/s/$/,\n                indexing="ij"/' \
+        "$NANOOWL_FILE" \
+    && sed -i \
+        's/torch.from_numpy(np.asarray(image))/torch.from_numpy(np.asarray(image).copy())/' \
+        "$IMAGE_PREPROCESSOR_FILE"
+
 ENV LD_LIBRARY_PATH=/opt/hpcx/ucx/lib:/opt/hpcx/ucc/lib:${LD_LIBRARY_PATH}
+ENV XDG_RUNTIME_DIR=/tmp/runtime-root
 
 WORKDIR /app
 COPY aimer.py /app/aimer.py

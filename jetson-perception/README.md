@@ -47,9 +47,8 @@ intercept the Argus camera stream.
 ./run.sh live "a computer mouse"
 ```
 
-The viewer opens in the Jetson's default browser when NanoOWL is ready. If it does not, open
-`http://localhost:7860` yourself. NanoOWL stays loaded and draws boxes continuously. Press
-`Ctrl+C` in the terminal to stop it.
+A local `NanoOWL Live` window opens when the model is ready. NanoOWL stays loaded and draws
+boxes continuously. Press `Q`, `Esc`, or close the window to stop it.
 
 If `camera-check` reports I2C error `-121`, shut down and remove power before reseating the
 ribbon. The gold contacts on the Jetson's 22-pin connector must face the board.

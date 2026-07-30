@@ -80,19 +80,6 @@ detect_photo() {
         python3 /app/aimer.py detect /input/image "$prompts"
 }
 
-open_live_view() {
-    local url="$1"
-    for _ in {1..120}; do
-        if curl --fail --silent --max-time 1 "$url" >/dev/null 2>&1; then
-            if [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && command -v xdg-open >/dev/null; then
-                xdg-open "$url" >/dev/null 2>&1 || true
-            fi
-            return
-        fi
-        sleep 1
-    done
-}
-
 case "${1:-}" in
     setup)
         "${DOCKER[@]}" build -t "$IMAGE" .
@@ -152,12 +139,16 @@ case "${1:-}" in
         camera_check
         require_setup
         require_engine
-        echo "The live view will open in your browser when NanoOWL is ready."
-        open_live_view "http://localhost:7860" &
-        OPENER_PID=$!
-        trap 'kill "$OPENER_PID" 2>/dev/null || true' EXIT
-        container --network host \
+        if [[ -z "${DISPLAY:-}" || -z "${XAUTHORITY:-}" || ! -r "$XAUTHORITY" ]]; then
+            echo "A local desktop session is required for the live window." >&2
+            exit 1
+        fi
+        container \
             -v /tmp/argus_socket:/tmp/argus_socket \
+            -v /tmp/.X11-unix:/tmp/.X11-unix \
+            -v "$XAUTHORITY:/tmp/.Xauthority:ro" \
+            -e DISPLAY="$DISPLAY" \
+            -e XAUTHORITY=/tmp/.Xauthority \
             -e __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json \
             "$IMAGE" python3 /app/aimer.py live "$2"
         ;;
