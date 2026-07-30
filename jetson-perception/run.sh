@@ -21,7 +21,7 @@ NanoOWL commands:
   ./run.sh detect PHOTO "a person,a red mug"
   ./run.sh camera-check
   ./run.sh camera "a person,a red mug"
-  ./run.sh live "a computer mouse"
+  ./run.sh live "a computer mouse" [--threshold 0.10] [--lock-threshold 0.50]
   ./run.sh shell
 
 Run them in that order the first time.
@@ -132,10 +132,12 @@ case "${1:-}" in
         detect_photo "$PHOTO" "$2"
         ;;
     live)
-        if [[ $# -ne 2 ]]; then
+        if [[ $# -lt 2 ]]; then
             usage
             exit 1
         fi
+        PROMPTS="$2"
+        shift 2
         camera_check
         require_setup
         require_engine
@@ -150,7 +152,7 @@ case "${1:-}" in
             -e DISPLAY="$DISPLAY" \
             -e XAUTHORITY=/tmp/.Xauthority \
             -e __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json \
-            "$IMAGE" python3 /app/aimer.py live "$2"
+            "$IMAGE" python3 /app/aimer.py live "$PROMPTS" "$@"
         ;;
     shell)
         require_setup

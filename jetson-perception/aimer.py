@@ -53,7 +53,7 @@ def detect(image_path: str, prompt_text: str, threshold: float) -> None:
     print(f"Found {len(output.labels)} object(s).")
 
 
-def live(prompt_text: str, threshold: float) -> None:
+def live(prompt_text: str, threshold: float, lock_threshold: float) -> None:
     import os
     import cv2
     import torch
@@ -91,7 +91,7 @@ def live(prompt_text: str, threshold: float) -> None:
     predictor = OwlPredictor(model_name=MODEL, image_encoder_engine=ENGINE)
     text_encodings = predictor.encode_text(prompts)
     inference_stream = torch.cuda.Stream()
-    tracker = TargetTracker()
+    tracker = TargetTracker(min_lock_score=lock_threshold)
 
     window = "NanoOWL Live"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
@@ -104,6 +104,10 @@ def live(prompt_text: str, threshold: float) -> None:
 
     cv2.setMouseCallback(window, select_target)
     print("Local live window ready.", flush=True)
+    print(
+        f"Detection threshold: {threshold:.2f}; automatic lock threshold: {lock_threshold:.2f}",
+        flush=True,
+    )
     print("Click a detection to lock it. Press R to reset, Q or Esc to stop.", flush=True)
 
     try:
@@ -155,6 +159,17 @@ def live(prompt_text: str, threshold: float) -> None:
             for detection in detections:
                 x1, y1, x2, y2 = (round(value) for value in detection.box)
                 cv2.rectangle(display_frame, (x1, y1), (x2, y2), (150, 150, 150), 1)
+                label = f"{prompts[detection.label]} {detection.score:.2f}"
+                cv2.putText(
+                    display_frame,
+                    label,
+                    (max(4, x1), max(18, y1 - 5)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (230, 230, 230),
+                    1,
+                    cv2.LINE_AA,
+                )
 
             camera_center = (frame_width // 2, frame_height // 2)
             cv2.drawMarker(display_frame, camera_center, (0, 255, 0), cv2.MARKER_CROSS, 28, 2)
@@ -221,6 +236,7 @@ def main() -> None:
     live_parser = commands.add_parser("live", help="show local CSI camera detections")
     live_parser.add_argument("prompts", help="comma-separated object descriptions")
     live_parser.add_argument("--threshold", type=float, default=0.1)
+    live_parser.add_argument("--lock-threshold", type=float, default=0.5)
 
     args = parser.parse_args()
     if args.command == "engine":
@@ -228,7 +244,7 @@ def main() -> None:
     elif args.command == "detect":
         detect(args.image, args.prompts, args.threshold)
     else:
-        live(args.prompts, args.threshold)
+        live(args.prompts, args.threshold, args.lock_threshold)
 
 
 if __name__ == "__main__":

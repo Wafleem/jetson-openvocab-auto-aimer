@@ -52,6 +52,13 @@ stable detection; click a particular box to choose it instead. The window shows 
 center, target center, and signed `dx`/`dy` pixel error. Press `R` to release a lost target,
 or press `Q`, `Esc`, or close the window to stop it.
 
+The default detector confidence is `0.10`, but automatic locking requires `0.50`. Every candidate
+box shows its confidence. If the real mouse consistently scores lower, reduce only the lock value:
+
+```bash
+./run.sh live "a computer mouse" --lock-threshold 0.40
+```
+
 The tracking and future servo handoff are explained in [TRACKING.md](TRACKING.md).
 
 If `camera-check` reports I2C error `-121`, shut down and remove power before reseating the

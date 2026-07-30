@@ -101,13 +101,17 @@ class BoxFilter:
         measured_height = measurement[3] - measurement[1]
         self.width += self.position_gain * (measured_width - self.width)
         self.height += self.position_gain * (measured_height - self.height)
+        velocity_limit_x = max(10.0, self.width * 0.2)
+        velocity_limit_y = max(10.0, self.height * 0.2)
+        self.velocity_x = max(-velocity_limit_x, min(velocity_limit_x, self.velocity_x))
+        self.velocity_y = max(-velocity_limit_y, min(velocity_limit_y, self.velocity_y))
         return self._box(self.center_x, self.center_y)
 
     def coast(self) -> Box:
         self.center_x += self.velocity_x
         self.center_y += self.velocity_y
-        self.velocity_x *= 0.8
-        self.velocity_y *= 0.8
+        self.velocity_x *= 0.6
+        self.velocity_y *= 0.6
         return self._box(self.center_x, self.center_y)
 
     def _box(self, center_x: float, center_y: float) -> Box:
@@ -124,9 +128,15 @@ class BoxFilter:
 class TargetTracker:
     """Maintain one target using motion, overlap, size, and conservative loss handling."""
 
-    def __init__(self, confirmation_hits: int = 2, max_misses: int = 8) -> None:
+    def __init__(
+        self,
+        confirmation_hits: int = 2,
+        max_misses: int = 8,
+        min_lock_score: float = 0.5,
+    ) -> None:
         self.confirmation_hits = confirmation_hits
         self.max_misses = max_misses
+        self.min_lock_score = min_lock_score
         self._next_id = 1
         self.reset()
 
@@ -185,12 +195,26 @@ class TargetTracker:
 
     def update(self, detections: list[Detection], frame_size: tuple[int, int]) -> None:
         if self.state == "LOST":
+            strong_detections = [
+                detection for detection in detections if detection.score >= self.min_lock_score
+            ]
+            match = self._best_match(strong_detections, frame_size)
+            if match is not None:
+                self.box = match.box
+                self.score = match.score
+                self.hits = 1
+                self.misses = 0
+                self.filter = BoxFilter(match.box)
+                self.state = "TENTATIVE"
             return
 
         if self.box is None:
-            if not detections:
+            candidates = [
+                detection for detection in detections if detection.score >= self.min_lock_score
+            ]
+            if not candidates:
                 return
-            candidate = max(detections, key=lambda detection: detection.score)
+            candidate = max(candidates, key=lambda detection: detection.score)
             self.track_id = self._next_id
             self._next_id += 1
             self.box = candidate.box

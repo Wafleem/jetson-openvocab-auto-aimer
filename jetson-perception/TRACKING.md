@@ -16,6 +16,8 @@ SEARCHING -> TENTATIVE -> TRACKING -> COASTING -> LOST
 ```
 
 - A detection must agree twice before it becomes a trusted track.
+- Automatic acquisition requires `0.50` confidence; weaker `0.10` detections remain visible but
+  cannot start a track.
 - The next detection is matched using box overlap, center proximity, and size similarity.
 - A constant-velocity estimate predicts brief motion between detections.
 - Eight misses are tolerated as `COASTING`, but aim output is paused during those misses.
@@ -34,14 +36,22 @@ a long, complete occlusion. That later requires appearance features such as NvDC
 2. **Correct:** when NanoOWL supplies a box, move the prediction toward that measurement and
    update the velocity from the remaining error.
 
-If NanoOWL misses a frame, the filter uses the prediction instead. Velocity is reduced by 20%
-on every missed frame so the box settles rather than flying across the image forever. The overlay
+If NanoOWL misses a frame, the filter uses the prediction instead. Velocity is bounded and reduced
+by 40% on every missed frame so the box settles rather than flying across the image. The overlay
 then shows `COASTING prediction N/8`. A new matching measurement corrects the prediction and
 returns the track to `TRACKING`; the ninth consecutive miss changes it to `LOST`.
+
+`LOST` can reacquire, but only when a new detection exceeds the lock threshold and remains near
+the last filtered box. That strong detection moves the same track ID to `TENTATIVE`; one more
+matching frame restores `TRACKING`. A far-away lookalike is ignored until you click it or press
+`R` to begin a new search.
 
 The predicted box helps association, but it does not create a valid aim command. This distinction
 is intentional: a future motor may follow measured-and-filtered positions, but should not continue
 moving toward a target that the camera cannot currently see.
+
+Do not raise both confidence values at once. Tune `--lock-threshold` first so random objects cannot
+start a track. Keep `--threshold` lower so an already selected target can survive weaker frames.
 
 ## 2. Calculate where to aim
 
