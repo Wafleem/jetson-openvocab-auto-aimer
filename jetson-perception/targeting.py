@@ -70,6 +70,57 @@ def _size_similarity(first: Box, second: Box) -> float:
     return min(first_area, second_area) / larger if larger else 0.0
 
 
+class BoxFilter:
+    """Smooth box measurements and predict through short detection gaps."""
+
+    def __init__(self, box: Box, position_gain: float = 0.7, velocity_gain: float = 0.3) -> None:
+        self.position_gain = position_gain
+        self.velocity_gain = velocity_gain
+        self.center_x, self.center_y = box_center(box)
+        self.width = box[2] - box[0]
+        self.height = box[3] - box[1]
+        self.velocity_x = 0.0
+        self.velocity_y = 0.0
+
+    def predicted_box(self) -> Box:
+        return self._box(self.center_x + self.velocity_x, self.center_y + self.velocity_y)
+
+    def correct(self, measurement: Box) -> Box:
+        predicted_x = self.center_x + self.velocity_x
+        predicted_y = self.center_y + self.velocity_y
+        measured_x, measured_y = box_center(measurement)
+        residual_x = measured_x - predicted_x
+        residual_y = measured_y - predicted_y
+
+        self.center_x = predicted_x + self.position_gain * residual_x
+        self.center_y = predicted_y + self.position_gain * residual_y
+        self.velocity_x += self.velocity_gain * residual_x
+        self.velocity_y += self.velocity_gain * residual_y
+
+        measured_width = measurement[2] - measurement[0]
+        measured_height = measurement[3] - measurement[1]
+        self.width += self.position_gain * (measured_width - self.width)
+        self.height += self.position_gain * (measured_height - self.height)
+        return self._box(self.center_x, self.center_y)
+
+    def coast(self) -> Box:
+        self.center_x += self.velocity_x
+        self.center_y += self.velocity_y
+        self.velocity_x *= 0.8
+        self.velocity_y *= 0.8
+        return self._box(self.center_x, self.center_y)
+
+    def _box(self, center_x: float, center_y: float) -> Box:
+        half_width = self.width / 2.0
+        half_height = self.height / 2.0
+        return (
+            center_x - half_width,
+            center_y - half_height,
+            center_x + half_width,
+            center_y + half_height,
+        )
+
+
 class TargetTracker:
     """Maintain one target using motion, overlap, size, and conservative loss handling."""
 
@@ -87,7 +138,7 @@ class TargetTracker:
         self.state = "SEARCHING"
         self.hits = 0
         self.misses = 0
-        self.velocity = (0.0, 0.0)
+        self.filter: BoxFilter | None = None
 
     @property
     def aim_valid(self) -> bool:
@@ -102,17 +153,11 @@ class TargetTracker:
         self.state = "TRACKING"
         self.hits = self.confirmation_hits
         self.misses = 0
-        self.velocity = (0.0, 0.0)
+        self.filter = BoxFilter(detection.box)
 
     def _predicted_box(self) -> Box:
-        assert self.box is not None
-        vx, vy = self.velocity
-        return (
-            self.box[0] + vx,
-            self.box[1] + vy,
-            self.box[2] + vx,
-            self.box[3] + vy,
-        )
+        assert self.filter is not None
+        return self.filter.predicted_box()
 
     def _best_match(self, detections: Iterable[Detection], frame_size: tuple[int, int]) -> Detection | None:
         assert self.box is not None and self.label is not None
@@ -153,30 +198,19 @@ class TargetTracker:
             self.score = candidate.score
             self.hits = 1
             self.state = "TENTATIVE" if self.confirmation_hits > 1 else "TRACKING"
+            self.filter = BoxFilter(candidate.box)
             return
 
         match = self._best_match(detections, frame_size)
         if match is None:
             self.misses += 1
-            self.box = self._predicted_box()
+            assert self.filter is not None
+            self.box = self.filter.coast()
             self.state = "COASTING" if self.misses <= self.max_misses else "LOST"
             return
 
-        previous_center = box_center(self.box)
-        measured_center = box_center(match.box)
-        measured_velocity = (
-            measured_center[0] - previous_center[0],
-            measured_center[1] - previous_center[1],
-        )
-        self.velocity = (
-            0.5 * self.velocity[0] + 0.5 * measured_velocity[0],
-            0.5 * self.velocity[1] + 0.5 * measured_velocity[1],
-        )
-        alpha = 0.7
-        self.box = tuple(
-            alpha * measured + (1.0 - alpha) * previous
-            for measured, previous in zip(match.box, self.box)
-        )
+        assert self.filter is not None
+        self.box = self.filter.correct(match.box)
         self.score = match.score
         self.misses = 0
         self.hits += 1

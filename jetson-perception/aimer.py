@@ -182,6 +182,8 @@ def live(prompt_text: str, threshold: float) -> None:
 
             track_name = f"TARGET {tracker.track_id}" if tracker.track_id is not None else "NO TARGET"
             aim_text = f"dx={solution.dx:+d}  dy={solution.dy:+d}" if solution.valid else "aim paused"
+            if tracker.state == "COASTING":
+                aim_text += f"  prediction {tracker.misses}/{tracker.max_misses}"
             cv2.putText(
                 display_frame,
                 f"{track_name}  {tracker.state}  {aim_text}",

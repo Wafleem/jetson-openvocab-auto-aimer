@@ -26,6 +26,23 @@ This follows the same basic association and shadow-tracking concepts documented 
 DeepStream trackers, while remaining small enough to understand. It cannot prove identity after
 a long, complete occlusion. That later requires appearance features such as NvDCF or Re-ID.
 
+### The momentary-drop filter
+
+`BoxFilter` is a small alpha-beta filter. Think of it as two alternating steps:
+
+1. **Predict:** move the previous box by its estimated velocity.
+2. **Correct:** when NanoOWL supplies a box, move the prediction toward that measurement and
+   update the velocity from the remaining error.
+
+If NanoOWL misses a frame, the filter uses the prediction instead. Velocity is reduced by 20%
+on every missed frame so the box settles rather than flying across the image forever. The overlay
+then shows `COASTING prediction N/8`. A new matching measurement corrects the prediction and
+returns the track to `TRACKING`; the ninth consecutive miss changes it to `LOST`.
+
+The predicted box helps association, but it does not create a valid aim command. This distinction
+is intentional: a future motor may follow measured-and-filtered positions, but should not continue
+moving toward a target that the camera cannot currently see.
+
 ## 2. Calculate where to aim
 
 For a tracked box `(x1, y1, x2, y2)`:
