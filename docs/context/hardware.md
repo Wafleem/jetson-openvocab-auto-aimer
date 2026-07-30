@@ -27,7 +27,9 @@ Official references: [ST product page](https://www.st.com/en/evaluation-tools/b-
 [UM3354 user manual](https://www.st.com/resource/en/user_manual/dm01077940.pdf), and
 [STM32N6570-DK manual](https://www.st.com/resource/en/user_manual/um3300-discovery-kit-with-stm32n657x0-mcu-stmicroelectronics.pdf).
 
-### Recommended integration order
+### STM32/UVC fallback
+
+This is available if direct Jetson CSI bring-up proves impractical; it is not the current plan.
 
 1. Keep the working IMX219 on the Jetson while target tracking is developed.
 2. Connect B-CAMS-IMX to the STM32N6 camera connector, not directly to the Jetson. Start with an
@@ -41,11 +43,24 @@ Official references: [ST product page](https://www.st.com/en/evaluation-tools/b-
 6. Add ToF only after tracking and servos work. It can supply target-range or proximity information,
    but its coarse zones must be aligned with the RGB image before associating a range with a box.
 
-The alternative is connecting IMX335 directly to Jetson CSI. Do not try that by cable shape alone.
-NVIDIA's default image does not include this module's driver. Direct use requires verifying every
-pin and voltage, adding an IMX335 V4L2 sensor driver and device-tree overlay, and performing Bayer
-ISP image-quality tuning. NVIDIA recommends its Camera Core/Argus path for ISP use and recommends
-working with a certified camera partner for Bayer sensor tuning. See NVIDIA's
+Direct IMX335-to-Jetson CSI remains an option, but do not try it by cable shape alone. The installed
+Jetson Linux R39.2 kernel reports `CONFIG_VIDEO_IMX335` as disabled, and contains neither an IMX335
+module nor an Orin Nano IMX335 overlay. Linux does have a GPL-2.0 IMX335 V4L2 driver:
+
+- The Linux 6.8 version is already named in the installed kernel's Kconfig and Makefile, but its
+  source is not installed and that version is hard-coded for four CSI lanes.
+- [Current upstream Linux](https://github.com/torvalds/linux/blob/master/drivers/media/i2c/imx335.c)
+  supports both two and four lanes. B-CAMS-IMX needs the newer two-lane path.
+
+Do not write the sensor driver from scratch first. The future bring-up should backport the current
+upstream driver against NVIDIA's exact R39.2 kernel source, build it as an out-of-tree module, and
+create a CAM1 device-tree overlay for the MB1854 pinout, clocks, reset, power, I2C address, two CSI
+lanes, and link frequencies. Validate raw capture with direct V4L2 before attempting Argus.
+
+That generic driver does not automatically provide `nvarguscamerasrc` or NVIDIA ISP tuning. Full
+Argus use may still require adapting it to NVIDIA's Camera Core interface and tuning the Bayer
+pipeline. NVIDIA recommends its Camera Core/Argus path for ISP use and recommends working with a
+certified camera partner for Bayer sensor tuning. See NVIDIA's
 [camera software guide](https://docs.nvidia.com/jetson/archives/r35.6.2/DeveloperGuide/SD/CameraDevelopment/CameraSoftwareDevelopmentSolution.html)
 and [sensor driver guide](https://docs.nvidia.com/jetson/archives/r35.3.1/DeveloperGuide/text/SD/CameraDevelopment/SensorSoftwareDriverProgramming.html).
 
