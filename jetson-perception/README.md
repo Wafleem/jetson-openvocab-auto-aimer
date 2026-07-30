@@ -41,6 +41,15 @@ The capture uses Argus's fluorescent white-balance preset, calibrated for this c
 The capture command selects NVIDIA's EGL driver explicitly so desktop Mesa settings cannot
 intercept the Argus camera stream.
 
+### Live detection
+
+```bash
+./run.sh live "a computer mouse"
+```
+
+Open `http://localhost:7860` on the Jetson. NanoOWL stays loaded and draws boxes continuously.
+Press `Ctrl+C` in the terminal to stop it.
+
 If `camera-check` reports I2C error `-121`, shut down and remove power before reseating the
 ribbon. The gold contacts on the Jetson's 22-pin connector must face the board.
 

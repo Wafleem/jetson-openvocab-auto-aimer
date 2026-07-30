@@ -21,6 +21,7 @@ NanoOWL commands:
   ./run.sh detect PHOTO "a person,a red mug"
   ./run.sh camera-check
   ./run.sh camera "a person,a red mug"
+  ./run.sh live "a computer mouse"
   ./run.sh shell
 
 Run them in that order the first time.
@@ -129,6 +130,19 @@ case "${1:-}" in
         fi
         echo "Captured: $PHOTO"
         detect_photo "$PHOTO" "$2"
+        ;;
+    live)
+        if [[ $# -ne 2 ]]; then
+            usage
+            exit 1
+        fi
+        camera_check
+        require_setup
+        require_engine
+        container --network host \
+            -v /tmp/argus_socket:/tmp/argus_socket \
+            -e __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json \
+            "$IMAGE" python3 /app/aimer.py live "$2"
         ;;
     shell)
         require_setup

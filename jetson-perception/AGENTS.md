@@ -4,8 +4,8 @@ Read the root `../AGENTS.md` first.
 
 ## Current milestone
 
-Get NanoOWL working on one real photo. Do not add camera streaming, voice, PaliGemma, tracking,
-or UART until this milestone works on the Jetson.
+Get NanoOWL working on real photos and a real CSI camera stream. Do not add voice, PaliGemma,
+tracking, or UART until live detection works on the Jetson.
 
 The complete beginner-facing workflow is:
 
@@ -14,6 +14,7 @@ The complete beginner-facing workflow is:
 ./run.sh engine
 ./run.sh detect path/to/photo.jpg "a person,a red mug"
 ./run.sh camera "a person,a red mug"
+./run.sh live "a computer mouse"
 ```
 
 ## Files

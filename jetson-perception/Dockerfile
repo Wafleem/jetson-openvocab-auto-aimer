@@ -33,6 +33,18 @@ RUN pip3 install "transformers<5" onnx \
     && sed -i 's/opset_version=onnx_opset/opset_version=onnx_opset,\n            dynamo=False/' \
         "$NANOOWL_FILE"
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gstreamer1.0-plugins-base \
+        gstreamer1.0-plugins-good \
+        gstreamer1.0-tools \
+        kmod \
+        libgles2 \
+        python3-opencv \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV LD_LIBRARY_PATH=/opt/hpcx/ucx/lib:/opt/hpcx/ucc/lib:${LD_LIBRARY_PATH}
+
 WORKDIR /app
 COPY aimer.py /app/aimer.py
 CMD ["bash"]
