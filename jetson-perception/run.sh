@@ -113,7 +113,8 @@ case "${1:-}" in
         require_setup
         require_engine
         PHOTO="$(pwd)/models/camera.jpg"
-        FRAME_PATTERN="/tmp/aimer-camera-frame-%03d.jpg"
+        FRAME_DIR="$(mktemp -d /tmp/aimer-camera.XXXXXX)"
+        FRAME_PATTERN="$FRAME_DIR/frame-%03d.jpg"
         env -u DISPLAY -u WAYLAND_DISPLAY \
             __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json \
             gst-launch-1.0 -q -e \
@@ -121,7 +122,7 @@ case "${1:-}" in
             'video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1' ! \
             nvvidconv ! 'video/x-raw,format=I420' ! jpegenc ! \
             multifilesink location="$FRAME_PATTERN"
-        cp /tmp/aimer-camera-frame-044.jpg "$PHOTO"
+        cp "$FRAME_DIR/frame-044.jpg" "$PHOTO"
         if [[ ! -s "$PHOTO" ]]; then
             echo "The CSI camera did not produce a frame. Check the ribbon cable and reboot after enabling the camera overlay." >&2
             exit 1

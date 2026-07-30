@@ -37,6 +37,7 @@ After enabling the overlay and rebooting the Jetson:
 This lets NVIDIA Argus settle its exposure and white balance, saves the final real frame to
 `models/camera.jpg`, and runs detection on it. There is no fake camera fallback: the command
 stops with an error if the CSI sensor does not produce a frame.
+The capture uses Argus's fluorescent white-balance preset, calibrated for this camera and room.
 The capture command selects NVIDIA's EGL driver explicitly so desktop Mesa settings cannot
 intercept the Argus camera stream.
 
