@@ -21,7 +21,12 @@ Later runs only need the `detect` command.
 
 ## CSI camera
 
-After enabling the IMX219 camera overlay and rebooting the Jetson:
+In Jetson-IO, select the overlay that matches the connector printed on the carrier board:
+
+- `CAM0` uses `Camera IMX219-A`.
+- `CAM1` uses `Camera IMX219-C`.
+
+After enabling the overlay and rebooting the Jetson:
 
 ```bash
 ./run.sh camera-check
