@@ -36,6 +36,8 @@ After enabling the overlay and rebooting the Jetson:
 `camera-check` only checks whether Linux can see the real sensor; it does not need Docker.
 This captures one real frame to `models/camera.jpg` and runs detection on it. There is no fake
 camera fallback: the command stops with an error if the CSI sensor does not produce a frame.
+The capture command selects NVIDIA's EGL driver explicitly so desktop Mesa settings cannot
+intercept the Argus camera stream.
 
 If `camera-check` reports I2C error `-121`, shut down and remove power before reseating the
 ribbon. The gold contacts on the Jetson's 22-pin connector must face the board.

@@ -113,7 +113,9 @@ case "${1:-}" in
         require_setup
         require_engine
         PHOTO="$(pwd)/models/camera.jpg"
-        gst-launch-1.0 -q -e \
+        env -u DISPLAY -u WAYLAND_DISPLAY \
+            __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json \
+            gst-launch-1.0 -q -e \
             nvarguscamerasrc sensor-id=0 num-buffers=1 ! \
             'video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1' ! \
             nvvidconv ! 'video/x-raw,format=I420' ! jpegenc ! \
