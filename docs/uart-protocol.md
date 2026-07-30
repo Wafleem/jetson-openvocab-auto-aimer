@@ -1,53 +1,75 @@
-# UART Protocol (canonical spec)
+# UART Protocol
 
-This document is the **single source of truth** for the Jetson ↔ STM32 link. The protocol is
-implemented **twice** (Python on the Jetson, C on the STM32) — both implementations MUST match this
-doc byte-for-byte. If you change anything here, update both:
-- `jetson-perception/src/aimer/comms/protocol.py`
-- `stm32-gimbal/App/Src/protocol.c` (+ `App/Inc/protocol.h`)
+This is the canonical Jetson-to-STM32 contract. It matches the 29-byte `SP` command used by the
+NYU RoboMaster CV repository at commit `4c7a568`, but gives yaw and pitch one fixed meaning:
+**current angular error from the camera center**, in radians.
 
-> Status: **DRAFT / stub.** Field sizes below are the intended starting point; confirm before
-> implementing. Nothing is wired up yet.
+> Status: specified, not implemented. The planned Python and C protocol files do not exist yet.
 
-## Physical layer (proposed)
-- UART, 8N1, no flow control.
-- Baud: **921600** (tune later; keep latency low). Defined in `app_config.h` and `.env`.
-- Jetson port: a `/dev/ttyTHS*` (Orin UART) — set via `SERIAL_PORT` env var.
+## Serial settings
 
-## Framing
-All multi-byte integers are **little-endian**. Frames are fixed-length per message id.
+- 115200 baud, 8 data bits, no parity, 1 stop bit, no flow control.
+- Fixed-length frames; all multi-byte values are little-endian.
+- Floats are 32-bit IEEE-754 values.
 
+## Jetson to STM32: aim command
+
+Total length: 29 bytes.
+
+| Bytes | Type | Name | Meaning |
+|-------|------|------|---------|
+| 0-1 | `uint8[2]` | header | ASCII `SP` (`0x53 0x50`) |
+| 2 | `uint8` | mode | `0` hold, `1` track, `2` track + fire request (reserved for later) |
+| 3-6 | `float32` | yaw_error | Horizontal angular error in radians; target right is negative |
+| 7-10 | `float32` | yaw_velocity | Reserved feed-forward; send `0.0` |
+| 11-14 | `float32` | yaw_acceleration | Reserved feed-forward; send `0.0` |
+| 15-18 | `float32` | pitch_error | Vertical angular error in radians; target below is positive |
+| 19-22 | `float32` | pitch_velocity | Reserved feed-forward; send `0.0` |
+| 23-26 | `float32` | pitch_acceleration | Reserved feed-forward; send `0.0` |
+| 27-28 | `uint16` | crc | CRC over bytes 0-26 |
+
+The 2D solver produces the errors from the target center and calibrated camera field of view:
+
+```text
+x = (target_x - image_width / 2) / (image_width / 2)
+y = (target_y - image_height / 2) / (image_height / 2)
+yaw_error   = -atan(x * tan(horizontal_fov / 2))
+pitch_error =  atan(y * tan(vertical_fov / 2))
 ```
-byte 0 : SYNC   = 0xAA          (start-of-frame marker)
-byte 1 : LEN    = payload length in bytes (excludes sync/len/crc)
-byte 2 : MSG_ID
-byte 3.. : PAYLOAD (LEN bytes)
-last   : CRC8   over [MSG_ID + PAYLOAD]   (polynomial TBD, e.g. CRC-8/Maxim)
+
+These are continuous controller errors, not one-time position increments. While `mode=1`, the
+STM32 repeatedly uses them to compute a limited movement rate and update each positional servo
+setpoint. It must not add the entire error to the servo angle on every received packet.
+
+While `mode=0`, the STM32 ignores all six float fields, holds its current servo positions, and
+clears or freezes PID integral state. This prevents target loss from commanding a return to zero.
+
+## CRC-16
+
+Use CRC-16/MCRF4XX:
+
+- polynomial `0x1021`, reflected implementation `0x8408`
+- initial value `0xFFFF`
+- input and output reflected
+- final XOR `0x0000`
+- check value for ASCII `123456789`: `0x6F91`
+- append the low CRC byte first
+
+Equivalent update for each byte:
+
+```text
+crc = (crc >> 8) XOR table[(crc XOR byte) AND 0xFF]
 ```
 
-## Message: Jetson → STM32  `MSG_AIM` (id = 0x01)
-Tells the gimbal how far the target is from frame center, in pixels.
+## STM32 to Jetson
 
-| Field  | Type   | Notes |
-|--------|--------|-------|
-| dx     | int16  | horizontal error (target_x − center_x), +right |
-| dy     | int16  | vertical error (target_y − center_y), +down |
-| flags  | uint8  | bit0 = target_valid (0 = no target this frame) |
+Telemetry remains required, but its frame is deferred until the STM32 project exists and its
+available feedback is known. Hobby servos provide no measured shaft angle, so the first telemetry
+will report commanded setpoints and status rather than claiming measured position.
 
-Payload = 5 bytes. Total frame = 1+1+1+5+1 = 9 bytes.
+## Timing and safety
 
-## Message: STM32 → Jetson  `MSG_TLM` (id = 0x81)
-Telemetry / heartbeat back to the Jetson.
-
-| Field      | Type   | Notes |
-|------------|--------|-------|
-| pan_angle  | int16  | current commanded pan angle, centi-degrees |
-| tilt_angle | int16  | current commanded tilt angle, centi-degrees |
-| status     | uint8  | bit0 = link_ok, bit1 = at_limit_pan, bit2 = at_limit_tilt |
-
-Payload = 5 bytes. Total frame = 9 bytes.
-
-## Timing / safety (to design)
-- Jetson sends `MSG_AIM` every frame (~target rate TBD).
-- STM32 treats absence of `MSG_AIM` for N ms as link loss → fail safe (stop motion).
-- STM32 emits `MSG_TLM` at a fixed heartbeat rate.
+- Send one command for every valid processed camera frame.
+- Send `mode=0` immediately when tracking is not confirmed.
+- The STM32 must enter hold mode when valid packets stop arriving for a configured timeout.
+- Reject a frame with a bad header, wrong length, non-finite float, or bad CRC.

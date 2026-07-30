@@ -67,9 +67,16 @@ dy = target_y - frame_height / 2
 Positive `dx` means the target is right of center. Positive `dy` means it is below center.
 A 20-pixel deadband turns small errors into zero so the future gimbal does not chatter.
 
+Before UART transmission, the calibrated 2D solver converts pixel error into angular error:
+
+```text
+yaw_error   = -atan((dx / half_width)  * tan(horizontal_fov / 2))
+pitch_error =  atan((dy / half_height) * tan(vertical_fov / 2))
+```
+
 `AimSolution` is the future handoff boundary. Only a solution with `valid=True` may be sent to
-the microcontroller. The STM32 will receive `dx` and `dy`; it will own PID, angle limits, PWM,
-and the motor update rate.
+the microcontroller. The STM32 will receive yaw/pitch error offsets in radians; it will own PID,
+angle limits, PWM, and the motor update rate.
 
 ## 3. Detect while moving
 

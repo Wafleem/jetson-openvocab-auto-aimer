@@ -7,12 +7,12 @@ one, note it here with the date and reason.
 |---|----------|--------|-----|
 | 1 | Open-vocab detector | **NanoOWL + TensorRT** | NVIDIA-optimized OWL-ViT for Jetson; best real-time perf on Orin Nano 8GB. |
 | 2 | Language/vision model | **PaliGemma (VLM)** | Sees the camera frame + the query to select/refine the target, not just parse text. |
-| 3 | Control split | **Jetson sends pixel error; STM32 runs PID** | Keeps real-time control on the deterministic MCU; Jetson stays a pure perception node. |
+| 3 | Control split | **Jetson sends yaw/pitch angular error; STM32 runs PID** | Lens geometry stays with perception; deterministic motion control stays on the MCU. Supersedes the original pixel-error choice on 2026-07-29. |
 | 4 | STM32 toolchain | **STM32CubeIDE + CubeMX (HAL)** | Official, standard for Nucleo; `.ioc`-driven init. |
 | 5 | Camera | **CSI (IMX219/IMX477)** | Native Jetson MIPI path via GStreamer/nvarguscamerasrc. |
 | 6 | Servos | **Standard 50 Hz hobby positional servos** | Internal position loop; STM32 PID adjusts the commanded angle. |
 | 7 | Query input | **Voice → speech-to-text** | Spoken natural-language target. STT model TBD (e.g. faster-whisper / whisper.cpp). |
-| 8 | UART format | **Binary packed frame + CRC, bidirectional** | Compact, robust; STM32 returns telemetry for logging/fault detection. |
+| 8 | UART format | **RoboMaster-compatible 29-byte `SP` command with CRC-16** | Reuses the team's proven Jetson-to-controller layout; telemetry remains planned. Updated 2026-07-29. |
 | 9 | STM32 firmware model | **FreeRTOS** | Separate tasks for UART RX, control loop, telemetry. |
 | 10 | Jetson environment | **Docker (jetson-containers / L4T base)** | Reproducible; isolates CUDA/TensorRT deps. |
 | 11 | STM32 scope | **Lean motor-controller only** | No on-NPU (Neural-ART) CV for now; can revisit. |
@@ -24,7 +24,7 @@ one, note it here with the date and reason.
 
 ## Open questions (not yet decided)
 - STT model + how voice capture is wired (mic device, push-to-talk vs. always-on).
-- Exact UART baud and CRC polynomial (see `uart-protocol.md`).
-- Target-lost and link-timeout fail-safe behavior (hold vs. recenter).
+- STM32-to-Jetson telemetry layout.
+- Link-timeout duration.
 - Control loop rate on the STM32.
 - Coordinate sign conventions / which physical servo is pan vs. tilt.

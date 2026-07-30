@@ -52,6 +52,9 @@ stable detection; click a particular box to choose it instead. The window shows 
 center, target center, and signed `dx`/`dy` pixel error. Press `R` to release a lost target,
 or press `Q`, `Esc`, or close the window to stop it.
 
+The future UART handoff converts that pixel error to yaw/pitch angular error using the calibrated
+camera field of view. Raw pixels are not the controller packet.
+
 The default detector confidence is `0.10`, but automatic locking requires `0.50`. Every candidate
 box shows its confidence. If the real mouse consistently scores lower, reduce only the lock value:
 
