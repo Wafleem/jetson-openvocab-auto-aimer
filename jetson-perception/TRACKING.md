@@ -74,6 +74,10 @@ yaw_error   = -atan((dx / half_width)  * tan(horizontal_fov / 2))
 pitch_error =  atan((dy / half_height) * tan(vertical_fov / 2))
 ```
 
+The live command displays those errors in degrees, but stores them in radians for the future UART
+packet. Its `62.2 x 37.4` degree defaults are only an initial IMX219 16:9 estimate; use `--hfov` and
+`--vfov` after measuring the clone lens.
+
 `AimSolution` is the future handoff boundary. Only a solution with `valid=True` may be sent to
 the microcontroller. The STM32 will receive yaw/pitch error offsets in radians; it will own PID,
 angle limits, PWM, and the motor update rate.

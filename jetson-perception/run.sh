@@ -22,6 +22,7 @@ NanoOWL commands:
   ./run.sh camera-check
   ./run.sh camera "a person,a red mug"
   ./run.sh live "a computer mouse" [--threshold 0.10] [--lock-threshold 0.50]
+                                     [--hfov 62.2] [--vfov 37.4]
   ./run.sh shell
 
 Run them in that order the first time.

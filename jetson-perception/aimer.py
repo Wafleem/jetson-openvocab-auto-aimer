@@ -6,6 +6,8 @@ from pathlib import Path
 
 ENGINE = "/models/owl_image_encoder_patch32.engine"
 MODEL = "google/owlvit-base-patch32"
+DEFAULT_HORIZONTAL_FOV = 62.2
+DEFAULT_VERTICAL_FOV = 37.4
 
 
 def build_engine() -> None:
@@ -53,8 +55,16 @@ def detect(image_path: str, prompt_text: str, threshold: float) -> None:
     print(f"Found {len(output.labels)} object(s).")
 
 
-def live(prompt_text: str, threshold: float, lock_threshold: float) -> None:
+def live(
+    prompt_text: str,
+    threshold: float,
+    lock_threshold: float,
+    horizontal_fov: float,
+    vertical_fov: float,
+) -> None:
     import os
+    from math import degrees
+
     import cv2
     import torch
     from nanoowl.owl_predictor import OwlPredictor
@@ -108,6 +118,7 @@ def live(prompt_text: str, threshold: float, lock_threshold: float) -> None:
         f"Detection threshold: {threshold:.2f}; automatic lock threshold: {lock_threshold:.2f}",
         flush=True,
     )
+    print(f"2D solver FOV: {horizontal_fov:.1f} x {vertical_fov:.1f} degrees", flush=True)
     print("Click a detection to lock it. Press R to reset, Q or Esc to stop.", flush=True)
 
     try:
@@ -153,6 +164,8 @@ def live(prompt_text: str, threshold: float, lock_threshold: float) -> None:
                 tracker.box if tracker.aim_valid else None,
                 frame_width,
                 frame_height,
+                horizontal_fov,
+                vertical_fov,
             )
 
             display_frame = frame.copy()
@@ -195,16 +208,34 @@ def live(prompt_text: str, threshold: float, lock_threshold: float) -> None:
                 cv2.circle(display_frame, target_center, 6, color, -1)
                 cv2.line(display_frame, camera_center, target_center, color, 2)
 
-            track_name = f"TARGET {tracker.track_id}" if tracker.track_id is not None else "NO TARGET"
-            aim_text = f"dx={solution.dx:+d}  dy={solution.dy:+d}" if solution.valid else "aim paused"
+            track_name = (
+                f"TARGET {tracker.track_id}" if tracker.track_id is not None else "NO TARGET"
+            )
+            aim_text = (
+                f"yaw={degrees(solution.yaw_error):+.1f}  "
+                f"pitch={degrees(solution.pitch_error):+.1f} deg"
+                f"  (dx={solution.dx:+d}, dy={solution.dy:+d})"
+                if solution.valid
+                else "aim paused"
+            )
             if tracker.state == "COASTING":
                 aim_text += f"  prediction {tracker.misses}/{tracker.max_misses}"
             cv2.putText(
                 display_frame,
-                f"{track_name}  {tracker.state}  {aim_text}",
+                f"{track_name}  {tracker.state}",
                 (18, 32),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.75,
+                (255, 255, 255),
+                2,
+                cv2.LINE_AA,
+            )
+            cv2.putText(
+                display_frame,
+                aim_text,
+                (18, 60),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.65,
                 (255, 255, 255),
                 2,
                 cv2.LINE_AA,
@@ -237,6 +268,8 @@ def main() -> None:
     live_parser.add_argument("prompts", help="comma-separated object descriptions")
     live_parser.add_argument("--threshold", type=float, default=0.1)
     live_parser.add_argument("--lock-threshold", type=float, default=0.5)
+    live_parser.add_argument("--hfov", type=float, default=DEFAULT_HORIZONTAL_FOV)
+    live_parser.add_argument("--vfov", type=float, default=DEFAULT_VERTICAL_FOV)
 
     args = parser.parse_args()
     if args.command == "engine":
@@ -244,7 +277,7 @@ def main() -> None:
     elif args.command == "detect":
         detect(args.image, args.prompts, args.threshold)
     else:
-        live(args.prompts, args.threshold, args.lock_threshold)
+        live(args.prompts, args.threshold, args.lock_threshold, args.hfov, args.vfov)
 
 
 if __name__ == "__main__":

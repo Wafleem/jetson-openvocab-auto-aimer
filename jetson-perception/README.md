@@ -55,6 +55,13 @@ or press `Q`, `Esc`, or close the window to stop it.
 The future UART handoff converts that pixel error to yaw/pitch angular error using the calibrated
 camera field of view. Raw pixels are not the controller packet.
 
+The initial IMX219 16:9 estimate is `62.2` degrees horizontal by `37.4` degrees vertical. Override
+it without changing code while calibrating the clone lens:
+
+```bash
+./run.sh live "a computer mouse" --hfov 62.2 --vfov 37.4
+```
+
 The default detector confidence is `0.10`, but automatic locking requires `0.50`. Every candidate
 box shows its confidence. If the real mouse consistently scores lower, reduce only the lock value:
 

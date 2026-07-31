@@ -1,7 +1,7 @@
 """Small, detector-driven target lock and camera-centering math."""
 
 from dataclasses import dataclass
-from math import hypot
+from math import atan, hypot, radians, tan
 from typing import Iterable
 
 
@@ -20,8 +20,8 @@ class AimSolution:
     valid: bool
     dx: int
     dy: int
-    normalized_x: float
-    normalized_y: float
+    yaw_error: float
+    pitch_error: float
     centered: bool
 
 
@@ -29,7 +29,20 @@ def box_center(box: Box) -> tuple[float, float]:
     return ((box[0] + box[2]) / 2.0, (box[1] + box[3]) / 2.0)
 
 
-def solve_aim(box: Box | None, frame_width: int, frame_height: int, deadband: int = 20) -> AimSolution:
+def solve_aim(
+    box: Box | None,
+    frame_width: int,
+    frame_height: int,
+    horizontal_fov_degrees: float,
+    vertical_fov_degrees: float,
+    deadband: int = 20,
+) -> AimSolution:
+    if frame_width <= 0 or frame_height <= 0:
+        raise ValueError("Frame dimensions must be positive")
+    if not 0.0 < horizontal_fov_degrees < 180.0:
+        raise ValueError("Horizontal FOV must be between 0 and 180 degrees")
+    if not 0.0 < vertical_fov_degrees < 180.0:
+        raise ValueError("Vertical FOV must be between 0 and 180 degrees")
     if box is None:
         return AimSolution(False, 0, 0, 0.0, 0.0, False)
 
@@ -41,12 +54,17 @@ def solve_aim(box: Box | None, frame_width: int, frame_height: int, deadband: in
         dx = 0
     if abs(dy) <= deadband:
         dy = 0
+
+    normalized_x = dx / (frame_width / 2.0)
+    normalized_y = dy / (frame_height / 2.0)
+    yaw_error = -atan(normalized_x * tan(radians(horizontal_fov_degrees) / 2.0))
+    pitch_error = atan(normalized_y * tan(radians(vertical_fov_degrees) / 2.0))
     return AimSolution(
         True,
         dx,
         dy,
-        dx / (frame_width / 2.0),
-        dy / (frame_height / 2.0),
+        yaw_error,
+        pitch_error,
         centered,
     )
 
