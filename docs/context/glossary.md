@@ -12,8 +12,8 @@
   but not chosen; see decisions.md.
 - **TensorRT** — NVIDIA's inference runtime; compiles models into optimized `.engine` files for the GPU.
 - **STT (speech-to-text)** — converts the spoken query into a text string on the Jetson.
-- **Pixel error (dx, dy)** — the target's offset from the frame center in pixels. The signal the Jetson
-  sends to the STM32. +dx = right, +dy = down.
+- **Angular error** — yaw/pitch offset from the camera's optical center, in radians. The 2D solver
+  derives it from pixel position and calibrated field of view; the Jetson sends it to the STM32.
 - **PID** — Proportional-Integral-Derivative controller. Two independent ones here: pan and tilt.
 - **Pan / Tilt** — horizontal (yaw) and vertical (pitch) gimbal axes.
 - **HAL** — STM32 Hardware Abstraction Layer (CubeMX-generated driver API).

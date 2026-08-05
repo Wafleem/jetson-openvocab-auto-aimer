@@ -13,16 +13,16 @@ End-to-end: a spoken query selects a target; the gimbal keeps it centered.
                          │                     ▼                              ▼                    │
                          │            PaliGemma VLM (frame + query) ──► chosen target box          │
                          │                                                    │                    │
-                         │                              target_tracker: box → pixel error (dx,dy)  │
-                         │                              relative to frame center (+ smoothing)      │
+                         │                         2D solver: box → yaw/pitch angular error         │
+                         │                         from calibrated FOV (+ smoothing)                │
                          │                                                    │                    │
                          └────────────────────────────────────────── UART TX │ ───────────────────┘
                                                                               ▼
                          ┌──────────────────────────── STM32N6 NUCLEO (FreeRTOS) ───────────────────┐
-                         │  uart_comms: parse binary frame (sync+len+id+dx+dy+flags+crc)             │
+                         │  uart_comms: parse 29-byte SP frame (mode+angles+CRC-16)                  │
                          │        │                                                                  │
                          │        ▼                                                                  │
-                         │  control_task @ fixed rate:  PID_pan(dx) , PID_tilt(dy)                   │
+                         │  control_task: PID_pan(yaw_error), PID_tilt(pitch_error)                  │
                          │        │                                                                  │
                          │        ▼                                                                  │
                          │  servo: angle → PWM CCR (50 Hz)  ──► pan servo , tilt servo              │
@@ -32,17 +32,17 @@ End-to-end: a spoken query selects a target; the gimbal keeps it centered.
 ```
 
 ## Responsibilities
-- **Jetson** owns all perception and decides *what* to aim at and *how far off* it is (in pixels).
-  It does NOT command angles — it sends the error signal.
-- **STM32** owns the *control*: it converts pixel error into servo motion via two independent
+- **Jetson** owns perception and converts the target's image position into yaw/pitch angular error.
+  These are offsets from camera center, not absolute servo positions.
+- **STM32** owns the *control*: it converts angular error into servo motion via two independent
   positional PID loops, respects mechanical limits, and reports telemetry.
 
-## Why pixel error (not angles)
-Keeps the control loop and its tuning entirely on the deterministic real-time MCU; the Jetson stays
-a pure perception node. The pixel→motion gain is absorbed into the PID gains on the STM32.
+## Why angular error
+The calibrated 2D FOV solver removes image-resolution and lens-FOV differences before the command
+reaches the STM32. The real-time controller, limits, and PWM generation still remain on the MCU.
 
 ## Failure handling (to design later)
-- Target lost → Jetson sets a flag in the frame; STM32 should hold position (decide: hold vs. recenter).
+- Target lost → Jetson sends `mode=0`; STM32 holds position and clears/freezes PID integral state.
 - UART link timeout → STM32 should fail safe (stop commanding motion).
 
 See [uart-protocol.md](uart-protocol.md) for the wire format and [context/](context/) for rationale.

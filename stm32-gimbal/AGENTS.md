@@ -8,7 +8,7 @@ Read the root [../AGENTS.md](../AGENTS.md) first.
 > `docs/pinout.md`. Do not scaffold firmware until that work starts.
 
 ## Planned role (when work begins)
-Receive **pixel error (dx, dy)** from the Jetson over UART, run **two positional PID loops**
+Receive **yaw/pitch angular error offsets** from the Jetson over UART, run **two positional PID loops**
 (pan + tilt), drive **two 50 Hz hobby servos**, and return telemetry. Lean motor-controller only.
 
 ## Planned setup

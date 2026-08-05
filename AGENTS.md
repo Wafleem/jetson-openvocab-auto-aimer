@@ -19,7 +19,7 @@ for the elevator pitch and [docs/architecture.md](docs/architecture.md) for the 
 voice query ─► STT ─► PaliGemma (VLM, sees frame+query) ─► target choice
 camera (CSI) ─► NanoOWL (open-vocab detect, TensorRT) ─► boxes ──┘
                                   │
-                       target box → pixel error (dx,dy) from frame center
+                       target box → angular error (yaw,pitch) from frame center
                                   │  UART (binary frame + crc, bidirectional)
                                   ▼
               STM32N6 (FreeRTOS): 2× positional PID ─► 2× 50Hz PWM servos (pan/tilt)
@@ -38,12 +38,12 @@ camera (CSI) ─► NanoOWL (open-vocab detect, TensorRT) ─► boxes ──┘
 |------|--------|
 | Open-vocab CV | NanoOWL + TensorRT |
 | VLM | PaliGemma (sees image + query) |
-| Control loop | Jetson sends **pixel error**; STM32 runs the PID |
+| Control loop | Jetson sends **angular error offsets**; STM32 runs the PID |
 | STM32 toolchain | STM32CubeIDE + CubeMX (HAL) |
 | Camera | CSI (IMX219/IMX477) via GStreamer |
 | Servos | Standard 50 Hz hobby positional servos |
 | Query input | Voice → speech-to-text |
-| UART | Binary packed frame + checksum, **bidirectional** |
+| UART | RoboMaster-compatible 29-byte `SP` command + CRC-16; telemetry planned |
 | STM32 FW | FreeRTOS |
 | Jetson env | Docker (jetson-containers / L4T base) |
 | STM32 scope | Lean motor-controller only (no on-NPU CV) |
@@ -53,9 +53,9 @@ camera (CSI) ─► NanoOWL (open-vocab detect, TensorRT) ─► boxes ──┘
 Full rationale: [docs/context/decisions.md](docs/context/decisions.md).
 
 ## The UART contract (must stay in sync on both sides)
-Canonical spec: [docs/uart-protocol.md](docs/uart-protocol.md). It is **duplicated** in code
-(`jetson-perception/.../comms/protocol.py` and `stm32-gimbal/App/Src/protocol.c`). If you change
-the frame layout, change the doc and **both** implementations together.
+Canonical spec: [docs/uart-protocol.md](docs/uart-protocol.md). It will be duplicated in Python and
+C when UART work begins. Once those implementations exist, every frame-layout change must update
+the document and both implementations together.
 
 ## Where to start
 - Perception side → [jetson-perception/AGENTS.md](jetson-perception/AGENTS.md)
