@@ -4,12 +4,8 @@ This is the vendor-neutral context file for any coding agent (Claude, or others)
 working on this repo. Read this first, then the subproject `AGENTS.md` for whichever
 side you're touching. The durable "why" lives in [docs/context/](docs/context/).
 
-> **Current status: SCAFFOLD ONLY — and deliberately minimal.** This document describes the
-> full target system (the north star). In the repo *right now*, only the **NanoOWL bring-up** on
-> the Jetson is scaffolded (see `jetson-perception/`). The STM32 firmware is a deferred placeholder
-> (`stm32-gimbal/` holds docs only; it'll be generated in CubeMX later). Everything is stubs
-> (`TODO`/`NotImplementedError`) — don't assume any function works. Build features in pipeline
-> order, starting from NanoOWL.
+> **Current status:** Jetson perception remains scaffolded. `stm32-gimbal/` now contains a
+> CubeMX-generated multicontext project and an AppNS USB CDC/FreeRTOS/PWM runtime.
 
 ## What this project is
 A voice-driven open-vocabulary auto-aiming camera gimbal. See [README.md](README.md)
@@ -20,7 +16,7 @@ voice query ─► STT ─► PaliGemma (VLM, sees frame+query) ─► target ch
 camera (CSI) ─► NanoOWL (open-vocab detect, TensorRT) ─► boxes ──┘
                                   │
                        target box → angular error (yaw,pitch) from frame center
-                                  │  UART (binary frame + crc, bidirectional)
+                                  │  USB CDC (binary frame + CRC)
                                   ▼
               STM32N6 (FreeRTOS): 2× positional PID ─► 2× 50Hz PWM servos (pan/tilt)
                                   │  telemetry (angles, status) ──► back to Jetson
@@ -30,8 +26,8 @@ camera (CSI) ─► NanoOWL (open-vocab detect, TensorRT) ─► boxes ──┘
 | Path | What | Stack |
 |------|------|-------|
 | `jetson-perception/` | Perception + control-target pipeline | Python 3, Docker (NVIDIA L4T), TensorRT |
-| `stm32-gimbal/` | Gimbal firmware (UART, PID, PWM) | C, STM32CubeIDE + CubeMX HAL, FreeRTOS |
-| `docs/` | Architecture, UART protocol, hardware, decisions | Markdown |
+| `stm32-gimbal/` | Gimbal firmware (USB CDC, PID, PWM) | C, STM32CubeIDE + CubeMX HAL, FreeRTOS |
+| `docs/` | Architecture, SP protocol, hardware, decisions | Markdown |
 
 ## Locked design decisions
 | Area | Choice |
@@ -43,7 +39,7 @@ camera (CSI) ─► NanoOWL (open-vocab detect, TensorRT) ─► boxes ──┘
 | Camera | CSI (IMX219/IMX477) via GStreamer |
 | Servos | Standard 50 Hz hobby positional servos |
 | Query input | Voice → speech-to-text |
-| UART | RoboMaster-compatible 29-byte `SP` command + CRC-16; telemetry planned |
+| Jetson link | USB CDC carrying the RoboMaster-compatible 29-byte `SP` command + CRC-16 |
 | STM32 FW | FreeRTOS |
 | Jetson env | Docker (jetson-containers / L4T base) |
 | STM32 scope | Lean motor-controller only (no on-NPU CV) |
@@ -52,9 +48,9 @@ camera (CSI) ─► NanoOWL (open-vocab detect, TensorRT) ─► boxes ──┘
 
 Full rationale: [docs/context/decisions.md](docs/context/decisions.md).
 
-## The UART contract (must stay in sync on both sides)
+## The SP contract (must stay in sync on both sides)
 Canonical spec: [docs/uart-protocol.md](docs/uart-protocol.md). It will be duplicated in Python and
-C when UART work begins. Once those implementations exist, every frame-layout change must update
+C. Every frame-layout change must update
 the document and both implementations together.
 
 ## Where to start

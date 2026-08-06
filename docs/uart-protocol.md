@@ -1,14 +1,16 @@
-# UART Protocol
+# SP Command Protocol (USB CDC)
 
 This is the canonical Jetson-to-STM32 contract. It matches the 29-byte `SP` command used by the
 NYU RoboMaster CV repository at commit `4c7a568`, but gives yaw and pitch one fixed meaning:
 **current angular error from the camera center**, in radians.
 
-> Status: specified, not implemented. The planned Python and C protocol files do not exist yet.
+> Status: implemented by `stm32-gimbal/App/gimbal_protocol.c`. The filename is retained for stable
+> links from older project documentation.
 
-## Serial settings
+## Transport settings
 
-- 115200 baud, 8 data bits, no parity, 1 stop bit, no flow control.
+- USB CDC ACM carries the frame bytes unchanged. A host may select 115200 8N1, but USB CDC does not
+  use that line rate electrically.
 - Fixed-length frames; all multi-byte values are little-endian.
 - Floats are 32-bit IEEE-754 values.
 

@@ -1,28 +1,30 @@
-# STM32N6 Nucleo — pinout & peripheral plan
+# STM32N6 Nucleo — pinout and peripherals
 
-> TBD until configured in STM32CubeMX. Fill these in from the `.ioc`, then keep this doc in sync.
-> The CubeMX `.ioc` is generated/maintained locally and committed once it exists — it is intentionally
-> NOT stubbed in this scaffold.
+Source of truth: [../jetson-openvocab-autoaim-stm32.ioc](../jetson-openvocab-autoaim-stm32.ioc).
 
-## Peripherals to enable in CubeMX
-- **2× TIM PWM channels @ 50 Hz** — pan + tilt servos.
-- **1× USART (with DMA)** — link to Jetson (binary protocol, see ../../docs/uart-protocol.md).
-- **FreeRTOS (CMSIS-RTOS2)** — tasks: uart_rx, control, telemetry.
-- A time base / RTOS tick for the fixed-rate control loop (`APP_CONTROL_RATE_HZ`).
+## Enabled peripherals
 
-## Pin map (fill in)
+- **TIM2 CH1 + CH2 at 50 Hz** — pan and tilt servo PWM.
+- **USB1 OTG HS + UCPD1 + USBX CDC ACM** — Jetson command link using the raw SP protocol.
+- **FreeRTOS (CMSIS-RTOS2)** — USB receive and control tasks with a latest-value command queue.
+
+## Pin map
+
 | Signal | Peripheral / Channel | Pin | Notes |
 |--------|----------------------|-----|-------|
-| Pan servo PWM  | TIMx_CHx | TBD | 50 Hz; CCR = pulse width (1.0–2.0 ms) |
-| Tilt servo PWM | TIMx_CHy | TBD | 50 Hz |
-| UART TX (to Jetson RX) | USARTx_TX | TBD | 3.3 V |
-| UART RX (from Jetson TX) | USARTx_RX | TBD | 3.3 V |
-| GND | — | — | common ground with Jetson **and** servo supply |
+| Pan servo PWM | TIM2_CH1 | PA15 | 50 Hz; 1000–2000 us pulse, 1500 us neutral |
+| Tilt servo PWM | TIM2_CH2 | PC0 | 50 Hz; 1000–2000 us pulse, 1500 us neutral |
+| Jetson data | USB1 OTG HS CDC ACM | Nucleo USB-C | Data-capable USB cable |
+| Servo ground | — | GND | Common with the external servo supply |
 
-## Timer math (to compute once clocks are set)
-- PWM period = 20 ms (50 Hz). Pick prescaler+ARR so 1 tick ≈ 1 µs for easy pulse mapping.
-- Pulse range from `app_config.h`: MIN/MID/MAX pulse µs → CCR.
+## Timer math
+
+- TIM2 input clock: 400 MHz.
+- Prescaler: 399, producing a 1 MHz counter and a 1 us timer tick.
+- Auto-reload: 19999, producing a 20 ms period (50 Hz).
+- CCR value therefore equals the commanded servo pulse width in microseconds.
 
 ## Wiring reminders (see ../../docs/context/hardware.md)
+
 - Servos powered from a **separate 5–6 V supply** (not the Nucleo), common ground.
-- Confirm UART voltage levels (3.3 V) before connecting.
+- Connect the Jetson to the Nucleo USB-C device port with a data-capable cable.

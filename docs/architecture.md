@@ -16,10 +16,10 @@ End-to-end: a spoken query selects a target; the gimbal keeps it centered.
                          │                         2D solver: box → yaw/pitch angular error         │
                          │                         from calibrated FOV (+ smoothing)                │
                          │                                                    │                    │
-                         └────────────────────────────────────────── UART TX │ ───────────────────┘
+                         └────────────────────────────────────────── USB CDC │ ───────────────────┘
                                                                               ▼
                          ┌──────────────────────────── STM32N6 NUCLEO (FreeRTOS) ───────────────────┐
-                         │  uart_comms: parse 29-byte SP frame (mode+angles+CRC-16)                  │
+                         │  usb_cdc: parse 29-byte SP frame (mode+angles+CRC-16)                     │
                          │        │                                                                  │
                          │        ▼                                                                  │
                          │  control_task: PID_pan(yaw_error), PID_tilt(pitch_error)                  │
@@ -27,7 +27,7 @@ End-to-end: a spoken query selects a target; the gimbal keeps it centered.
                          │        ▼                                                                  │
                          │  servo: angle → PWM CCR (50 Hz)  ──► pan servo , tilt servo              │
                          │        │                                                                  │
-                         │        └──► telemetry frame (pan_angle, tilt_angle, status) ──► UART TX ──┼─► back to Jetson
+                         │        └──► telemetry frame (pan_angle, tilt_angle, status) ─► USB CDC ───┼─► back to Jetson
                          └───────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -41,8 +41,8 @@ End-to-end: a spoken query selects a target; the gimbal keeps it centered.
 The calibrated 2D FOV solver removes image-resolution and lens-FOV differences before the command
 reaches the STM32. The real-time controller, limits, and PWM generation still remain on the MCU.
 
-## Failure handling (to design later)
+## Failure handling
 - Target lost → Jetson sends `mode=0`; STM32 holds position and clears/freezes PID integral state.
-- UART link timeout → STM32 should fail safe (stop commanding motion).
+- USB CDC command timeout (250 ms) → STM32 holds the current servo positions and resets PID state.
 
 See [uart-protocol.md](uart-protocol.md) for the wire format and [context/](context/) for rationale.

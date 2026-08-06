@@ -12,8 +12,8 @@ one, note it here with the date and reason.
 | 5 | Camera | **CSI (IMX219/IMX477)** | Native Jetson MIPI path via GStreamer/nvarguscamerasrc. |
 | 6 | Servos | **Standard 50 Hz hobby positional servos** | Internal position loop; STM32 PID adjusts the commanded angle. |
 | 7 | Query input | **Voice → speech-to-text** | Spoken natural-language target. STT model TBD (e.g. faster-whisper / whisper.cpp). |
-| 8 | UART format | **RoboMaster-compatible 29-byte `SP` command with CRC-16** | Reuses the team's proven Jetson-to-controller layout; telemetry remains planned. Updated 2026-07-29. |
-| 9 | STM32 firmware model | **FreeRTOS** | Separate tasks for UART RX, control loop, telemetry. |
+| 8 | Jetson link | **USB CDC carrying the RoboMaster-compatible 29-byte `SP` command with CRC-16** | Reuses the team's proven frame and Jetson bridge without consuming a hardware UART. Updated 2026-08-06. |
+| 9 | STM32 firmware model | **FreeRTOS** | Separate USB receive and control tasks share a latest-value command queue. |
 | 10 | Jetson environment | **Docker (jetson-containers / L4T base)** | Reproducible; isolates CUDA/TensorRT deps. |
 | 11 | STM32 scope | **Lean motor-controller only** | No on-NPU (Neural-ART) CV for now; can revisit. |
 | 12 | Folder names | `jetson-perception/`, `stm32-gimbal/` | Descriptive of each board's role. |
@@ -25,6 +25,5 @@ one, note it here with the date and reason.
 ## Open questions (not yet decided)
 - STT model + how voice capture is wired (mic device, push-to-talk vs. always-on).
 - STM32-to-Jetson telemetry layout.
-- Link-timeout duration.
 - Control loop rate on the STM32.
 - Coordinate sign conventions / which physical servo is pan vs. tilt.
