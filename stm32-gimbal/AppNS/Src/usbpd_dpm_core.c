@@ -40,7 +40,11 @@
 extern uint32_t HAL_GetTick(void);
 
 /* Private function prototypes -----------------------------------------------*/
+#if defined(USE_STM32_UTILITY_OS)
 void USBPD_CAD_Task(void);
+#else
+DEF_TASK_FUNCTION(USBPD_CAD_Task);
+#endif /* USE_STM32_UTILITY_OS */
 void USBPD_TaskUser(void);
 
 #if defined(USE_STM32_UTILITY_OS)
@@ -60,6 +64,9 @@ UTIL_TIMER_Object_t TimerCAD;
 #endif /* USE_STM32_UTILITY_OS */
 
 /* Private define ------------------------------------------------------------*/
+#define OS_CAD_PRIORITY                   osPriorityNormal
+#define OS_CAD_STACK_SIZE                 1024U
+
 /* Private macro -------------------------------------------------------------*/
 #define CHECK_PE_FUNCTION_CALL(_function_)  do{                                     \
                                                 _retr = _function_;                  \
@@ -84,6 +91,8 @@ UTIL_TIMER_Object_t TimerCAD;
 #define OFFSET_CAD 1U
 static uint32_t DPM_Sleep_time[USBPD_PORT_COUNT + OFFSET_CAD];
 static uint32_t DPM_Sleep_start[USBPD_PORT_COUNT + OFFSET_CAD];
+static OS_QUEUE_ID CADQueueId;
+static OS_TASK_ID CADThread;
 #endif /* !USE_STM32_UTILITY_OS */
 
 USBPD_ParamsTypeDef   DPM_Params[USBPD_PORT_COUNT];
@@ -141,6 +150,14 @@ error :
 USBPD_StatusTypeDef USBPD_DPM_InitOS(void)
 {
   OS_INIT();
+
+#if !defined(USE_STM32_UTILITY_OS)
+  OS_CREATE_QUEUE(CADQueueId, "QCAD", USBPD_PORT_COUNT, OS_ELEMENT_SIZE);
+  OS_DEFINE_TASK(CAD, USBPD_CAD_Task, OS_CAD_PRIORITY, OS_CAD_STACK_SIZE, NULL);
+  OS_CREATE_TASK(CADThread, CAD, USBPD_CAD_Task, OS_CAD_PRIORITY, OS_CAD_STACK_SIZE, NULL);
+#endif /* !USE_STM32_UTILITY_OS */
+
+error:
   return _retr;
 }
 
@@ -236,6 +253,25 @@ void USBPD_TaskUser(void)
 }
 #endif /* USE_STM32_UTILITY_OS */
 
+#if !defined(USE_STM32_UTILITY_OS)
+/**
+  * @brief  Main task for the USB Type-C cable-detection layer
+  * @param  argument Not used
+  * @retval None
+  */
+DEF_TASK_FUNCTION(USBPD_CAD_Task)
+{
+  uint32_t timing;
+
+  (void)argument;
+  for (;;)
+  {
+    timing = USBPD_CAD_Process();
+    OS_GETMESSAGE_QUEUE(CADQueueId, timing);
+  }
+}
+#endif /* !USE_STM32_UTILITY_OS */
+
 void USBPD_DPM_Run(void)
 {
 #if defined(USE_STM32_UTILITY_OS)
@@ -275,7 +311,7 @@ static void USBPD_DPM_CADTaskWakeUp(void)
 #if defined(USE_STM32_UTILITY_OS)
   UTIL_SEQ_SetTask(TASK_CAD, 0);
 #else
-  DPM_Sleep_time[USBPD_PORT_COUNT] = 0;
+  OS_PUT_MESSAGE_QUEUE(CADQueueId, 0xFFFFU, 0U);
 #endif /* USE_STM32_UTILITY_OS */
 }
 
@@ -325,4 +361,3 @@ __WEAK void USBPD_DPM_ErrorHandler(void)
      another solution could be to reset application */
   while (1u == 1u) {};
 }
-

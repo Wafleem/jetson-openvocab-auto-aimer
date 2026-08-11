@@ -58,12 +58,16 @@ extern "C" {
 /**
   * @brief macro definition the define a queue type
   */
+#if (osCMSIS < 0x20000U)
 #define OS_QUEUE_ID osMessageQId
+#else
+#define OS_QUEUE_ID osMessageQueueId_t
+#endif /* osCMSIS < 0x20000U */
 
 /**
   * @brief macro definition the define a queue type
   */
-#define OS_ELEMENT_SIZE sizeof(uint16_t)
+#define OS_ELEMENT_SIZE sizeof(uint32_t)
 
 /**
   * @brief macro definition used to define a queue
@@ -81,6 +85,11 @@ extern "C" {
 #else
 #define OS_CREATE_QUEUE(_ID_,_NAME_,_ELT_,_ELTSIZE_) do {                                                       \
                                                           (_ID_) = osMessageQueueNew((_ELT_),(_ELTSIZE_), NULL);\
+                                                          if ((_ID_) == NULL)                                    \
+                                                          {                                                      \
+                                                            _retr = USBPD_ERROR;                                 \
+                                                            goto error;                                          \
+                                                          }                                                      \
                                                         }while(0)
 #endif /* osCMSIS < 0x20000U */
 
@@ -122,7 +131,11 @@ extern "C" {
 /**
   * @brief macro definition of the TASK id
   */
-#define OS_TASK_ID   osThreadId
+#if (osCMSIS < 0x20000U)
+#define OS_TASK_ID osThreadId
+#else
+#define OS_TASK_ID osThreadId_t
+#endif /* osCMSIS < 0x20000U */
 
 /**
   * @brief macro definition used to create a task

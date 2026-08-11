@@ -12,14 +12,19 @@ Source of truth: [../jetson-openvocab-autoaim-stm32.ioc](../jetson-openvocab-aut
 
 | Signal | Peripheral / Channel | Pin | Notes |
 |--------|----------------------|-----|-------|
-| Pan servo PWM | TIM2_CH1 | PA15 | 50 Hz; 1000–2000 us pulse, 1500 us neutral |
+| Pan servo PWM | TIM2_CH1 | PA15 | Current generated pin; JTDI/debug connector, do not use for normal servo wiring |
 | Tilt servo PWM | TIM2_CH2 | PC0 | 50 Hz; 1000–2000 us pulse, 1500 us neutral |
 | Jetson data | USB1 OTG HS CDC ACM | Nucleo USB-C | Data-capable USB cable |
 | Servo ground | — | GND | Common with the external servo supply |
 
+For the next regeneration, move pan to `PG2 / TIM14_CH1` (Arduino D11) and tilt to
+`PA3 / TIM16_CH1` (Arduino D10). These are accessible expansion-header pins and leave TIM1 available
+for the native USB-PD time base. The handwritten control task will need to use `htim14` channel 1
+and `htim16` channel 1 after that regeneration.
+
 ## Timer math
 
-- TIM2 input clock: 400 MHz.
+- Current TIM2 input clock: 400 MHz.
 - Prescaler: 399, producing a 1 MHz counter and a 1 us timer tick.
 - Auto-reload: 19999, producing a 20 ms period (50 Hz).
 - CCR value therefore equals the commanded servo pulse width in microseconds.
