@@ -4,8 +4,8 @@ Read the root `../AGENTS.md` first.
 
 ## Current milestone
 
-Get NanoOWL working on real photos and maintain one target in a real CSI camera stream. Do not
-add voice, PaliGemma, UART, or servo output until target locking works on the Jetson.
+NanoOWL camera tracking and the 2D angular solver work on the Jetson. The current milestone is the
+real USB CDC handoff to the STM32 gimbal. Voice and PaliGemma remain deferred.
 
 The complete beginner-facing workflow is:
 
@@ -15,6 +15,7 @@ The complete beginner-facing workflow is:
 ./run.sh detect path/to/photo.jpg "a person,a red mug"
 ./run.sh camera "a person,a red mug"
 ./run.sh live "a computer mouse"
+./run.sh live "a computer mouse" --serial /dev/ttyACM0
 ```
 
 ## Files

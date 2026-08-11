@@ -23,6 +23,7 @@ NanoOWL commands:
   ./run.sh camera "a person,a red mug"
   ./run.sh live "a computer mouse" [--threshold 0.10] [--lock-threshold 0.50]
                                      [--hfov 62.2] [--vfov 37.4]
+                                     [--serial /dev/ttyACM0]
   ./run.sh shell
 
 Run them in that order the first time.
@@ -139,6 +140,25 @@ case "${1:-}" in
         fi
         PROMPTS="$2"
         shift 2
+        LIVE_ARGS=("$@")
+        SERIAL_DEVICE=""
+        for ((index = 0; index < ${#LIVE_ARGS[@]}; ++index)); do
+            if [[ "${LIVE_ARGS[$index]}" == "--serial" ]]; then
+                if ((index + 1 >= ${#LIVE_ARGS[@]})); then
+                    echo "--serial needs a device path." >&2
+                    exit 1
+                fi
+                SERIAL_DEVICE="${LIVE_ARGS[$((index + 1))]}"
+            fi
+        done
+        DEVICE_ARGS=()
+        if [[ -n "$SERIAL_DEVICE" ]]; then
+            if [[ ! -c "$SERIAL_DEVICE" ]]; then
+                echo "USB CDC device not found: $SERIAL_DEVICE" >&2
+                exit 1
+            fi
+            DEVICE_ARGS=(--device "$SERIAL_DEVICE:$SERIAL_DEVICE")
+        fi
         camera_check
         require_setup
         require_engine
@@ -153,7 +173,8 @@ case "${1:-}" in
             -e DISPLAY="$DISPLAY" \
             -e XAUTHORITY=/tmp/.Xauthority \
             -e __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json \
-            "$IMAGE" python3 /app/aimer.py live "$PROMPTS" "$@"
+            "${DEVICE_ARGS[@]}" \
+            "$IMAGE" python3 /app/aimer.py live "$PROMPTS" "${LIVE_ARGS[@]}"
         ;;
     shell)
         require_setup

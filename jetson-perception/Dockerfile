@@ -64,5 +64,6 @@ ENV XDG_RUNTIME_DIR=/tmp/runtime-root
 
 WORKDIR /app
 COPY aimer.py /app/aimer.py
+COPY gimbal_link.py /app/gimbal_link.py
 COPY targeting.py /app/targeting.py
 CMD ["bash"]

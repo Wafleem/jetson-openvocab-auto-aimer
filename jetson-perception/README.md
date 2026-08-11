@@ -52,8 +52,17 @@ stable detection; click a particular box to choose it instead. The window shows 
 center, target center, and signed `dx`/`dy` pixel error. Press `R` to release a lost target,
 or press `Q`, `Esc`, or close the window to stop it.
 
-The future UART handoff converts that pixel error to yaw/pitch angular error using the calibrated
-camera field of view. Raw pixels are not the controller packet.
+The CDC handoff converts that pixel error to yaw/pitch angular error using the calibrated camera
+field of view. Raw pixels are not the controller packet.
+
+Once the STM32 firmware enumerates as USB CDC, enable gimbal commands with:
+
+```bash
+./run.sh live "a computer mouse" --serial /dev/ttyACM0
+```
+
+The Jetson sends a track command only while the tracker is confirmed. It sends hold while searching,
+coasting, or lost, and once more when the live program closes.
 
 The initial IMX219 16:9 estimate is `62.2` degrees horizontal by `37.4` degrees vertical. Override
 it without changing code while calibrating the clone lens:
@@ -83,8 +92,7 @@ ribbon. The gold contacts on the Jetson's 22-pin connector must face the board.
 | `Dockerfile` | Installs the Jetson/NanoOWL dependencies. |
 | `models/` | Stores the generated TensorRT engine. |
 
-Camera streaming, voice input, PaliGemma, tracking, and UART are intentionally not implemented
-yet. Add them one at a time after this static-photo test works on the Jetson.
+Voice input and PaliGemma are not implemented yet.
 
 ## Useful commands
 

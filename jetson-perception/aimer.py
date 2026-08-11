@@ -61,6 +61,7 @@ def live(
     lock_threshold: float,
     horizontal_fov: float,
     vertical_fov: float,
+    serial_device: str | None,
 ) -> None:
     import os
     from math import degrees
@@ -69,6 +70,7 @@ def live(
     import torch
     from nanoowl.owl_predictor import OwlPredictor
     from PIL import Image
+    from gimbal_link import GimbalLink
     from targeting import Detection, TargetTracker, box_center, solve_aim
 
     prompts = [prompt.strip() for prompt in prompt_text.split(",") if prompt.strip()]
@@ -102,6 +104,7 @@ def live(
     text_encodings = predictor.encode_text(prompts)
     inference_stream = torch.cuda.Stream()
     tracker = TargetTracker(min_lock_score=lock_threshold)
+    gimbal = GimbalLink(serial_device) if serial_device else None
 
     window = "NanoOWL Live"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
@@ -119,6 +122,8 @@ def live(
         flush=True,
     )
     print(f"2D solver FOV: {horizontal_fov:.1f} x {vertical_fov:.1f} degrees", flush=True)
+    if gimbal is not None:
+        print(f"Gimbal link: {serial_device}", flush=True)
     print("Click a detection to lock it. Press R to reset, Q or Esc to stop.", flush=True)
 
     try:
@@ -167,6 +172,12 @@ def live(
                 horizontal_fov,
                 vertical_fov,
             )
+            if gimbal is not None:
+                gimbal.send(
+                    1 if solution.valid else 0,
+                    solution.yaw_error,
+                    solution.pitch_error,
+                )
 
             display_frame = frame.copy()
             for detection in detections:
@@ -249,6 +260,8 @@ def live(
     except KeyboardInterrupt:
         pass
     finally:
+        if gimbal is not None:
+            gimbal.close()
         camera.release()
         cv2.destroyAllWindows()
 
@@ -270,6 +283,7 @@ def main() -> None:
     live_parser.add_argument("--lock-threshold", type=float, default=0.5)
     live_parser.add_argument("--hfov", type=float, default=DEFAULT_HORIZONTAL_FOV)
     live_parser.add_argument("--vfov", type=float, default=DEFAULT_VERTICAL_FOV)
+    live_parser.add_argument("--serial", help="USB CDC device, usually /dev/ttyACM0")
 
     args = parser.parse_args()
     if args.command == "engine":
@@ -277,7 +291,14 @@ def main() -> None:
     elif args.command == "detect":
         detect(args.image, args.prompts, args.threshold)
     else:
-        live(args.prompts, args.threshold, args.lock_threshold, args.hfov, args.vfov)
+        live(
+            args.prompts,
+            args.threshold,
+            args.lock_threshold,
+            args.hfov,
+            args.vfov,
+            args.serial,
+        )
 
 
 if __name__ == "__main__":
