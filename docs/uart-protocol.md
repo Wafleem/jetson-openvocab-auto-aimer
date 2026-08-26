@@ -63,11 +63,36 @@ Equivalent update for each byte:
 crc = (crc >> 8) XOR table[(crc XOR byte) AND 0xFF]
 ```
 
-## STM32 to Jetson
+## STM32 to Jetson: telemetry
 
-Telemetry remains required, but its frame is deferred until the STM32 project exists and its
-available feedback is known. Hobby servos provide no measured shaft angle, so the first telemetry
-will report commanded setpoints and status rather than claiming measured position.
+The STM32 sends the latest controller state every 100 ms. Hobby servos provide no measured shaft
+angle, so the pulse widths below are commanded setpoints, not measured positions. Total length is
+18 bytes; integers are little-endian and the CRC covers bytes 0-15.
+
+| Bytes | Type | Name | Meaning |
+|-------|------|------|---------|
+| 0-1 | `uint8[2]` | header | ASCII `ST` (`0x53 0x54`) |
+| 2 | `uint8` | version | Telemetry layout version, currently `1` |
+| 3 | `uint8` | mode | Controller state: `0` hold, `1` track, `2` track + reserved fire request |
+| 4-5 | `uint16` | status | Bit flags described below |
+| 6-7 | `uint16` | yaw_pulse_us | Commanded pan-servo pulse width in microseconds |
+| 8-9 | `uint16` | pitch_pulse_us | Commanded tilt-servo pulse width in microseconds |
+| 10-11 | `uint16` | command_age_ms | Age of the newest valid command; `0xFFFF` means none received |
+| 12-15 | `uint32` | sequence | Control-loop sequence counter, wraps naturally |
+| 16-17 | `uint16` | crc | CRC-16/MCRF4XX over bytes 0-15, low byte first |
+
+Status bits:
+
+| Bit | Mask | Meaning |
+|-----|------|---------|
+| 0 | `0x0001` | USB CDC is connected |
+| 1 | `0x0002` | Newest valid command is within the 250 ms timeout |
+| 2 | `0x0004` | Tracking control is active |
+| 3 | `0x0008` | Yaw output hit its rate or mechanical limit this cycle |
+| 4 | `0x0010` | Pitch output hit its rate or mechanical limit this cycle |
+
+Unknown command age is distinct from a large age. Ages at or above `0xFFFF` are reported as
+`0xFFFE`, reserving `0xFFFF` for "no valid command received."
 
 ## Timing and safety
 

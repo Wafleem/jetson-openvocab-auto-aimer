@@ -10,7 +10,8 @@ STM32CubeN6 1.2.0, and X-CUBE-FREERTOS 1.3.1. Context ownership is intentional:
 - `AppNS/` contains the runtime peripherals and integration: FreeRTOS, USBX CDC ACM, UCPD/USB-PD,
   TIM2 PWM, and the generated hooks into `App/`.
 - `App/` contains the handwritten SP stream parser, latest-value FreeRTOS message queue, CDC reader,
-  servo PID/control task, and PWM startup. CubeMX regeneration must not overwrite this directory.
+  telemetry writer, servo PID/control task, and PWM startup. CubeMX regeneration must not overwrite
+  this directory.
 
 TIM2 CH1 on PA15 and TIM2 CH2 on PC0 produce 50 Hz PWM with 1500 us neutral pulses. This timer
 configuration is electrically correct, but PA15 is routed to the Nucleo debug connector rather than
@@ -47,7 +48,7 @@ See [docs/pinout.md](docs/pinout.md) for the planned peripherals/wiring and the 
 The stream parser and the complete two-axis controller are independent of HAL and FreeRTOS so their
 safety behavior can be checked on a development machine. The checks cover fragmented and corrupt
 SP frames, CRC, hold mode, timeout-equivalent hold, PID history reset, servo rate limits, mechanical
-end stops, and integral anti-windup.
+end stops, integral anti-windup, and the exact STM32-to-Jetson telemetry layout.
 
 ```bash
 cmake -S . -B build/host

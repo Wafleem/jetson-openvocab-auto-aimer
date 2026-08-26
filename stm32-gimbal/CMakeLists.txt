@@ -11,6 +11,7 @@ enable_testing()
 add_library(gimbal_core STATIC
   App/gimbal_control.c
   App/gimbal_protocol.c
+  App/gimbal_telemetry.c
 )
 target_include_directories(gimbal_core PUBLIC App)
 
@@ -27,3 +28,7 @@ add_test(NAME gimbal_control COMMAND test_gimbal_control)
 add_executable(test_gimbal_protocol tests/test_gimbal_protocol.c)
 target_link_libraries(test_gimbal_protocol PRIVATE gimbal_core m)
 add_test(NAME gimbal_protocol COMMAND test_gimbal_protocol)
+
+add_executable(test_gimbal_telemetry tests/test_gimbal_telemetry.c)
+target_link_libraries(test_gimbal_telemetry PRIVATE gimbal_core m)
+add_test(NAME gimbal_telemetry COMMAND test_gimbal_telemetry)
