@@ -41,3 +41,19 @@ project metadata. Application changes belong only in CubeMX user-code regions or
 
 See [docs/pinout.md](docs/pinout.md) for the planned peripherals/wiring and the root
 [../AGENTS.md](../AGENTS.md) + [../docs/](../docs/) for the full system design and SP protocol contract.
+
+## Host validation
+
+The stream parser and the complete two-axis controller are independent of HAL and FreeRTOS so their
+safety behavior can be checked on a development machine. The checks cover fragmented and corrupt
+SP frames, CRC, hold mode, timeout-equivalent hold, PID history reset, servo rate limits, mechanical
+end stops, and integral anti-windup.
+
+```bash
+cmake -S . -B build/host
+cmake --build build/host
+ctest --test-dir build/host --output-on-failure
+```
+
+These deterministic tests validate the firmware core; they do not replace the board checks for USB
+enumeration, physical PWM timing, servo direction, supply integrity, or tuned gains.
