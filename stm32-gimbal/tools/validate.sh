@@ -44,6 +44,10 @@ require_literal "TIM14.PeriodNoDither=19999" "$ioc"
 require_literal "TIM16.Prescaler=399" "$ioc"
 require_literal "TIM16.PeriodNoDither=19999" "$ioc"
 require_literal "MX_USBPD_Init-USBPD-true-HAL-false-AppliNonSecure" "$ioc"
+require_literal "EXTMEM_MANAGER.RefParam_LRUN_SRC_size=0x00080000" "$ioc"
+require_literal "#define EXTMEM_LRUN_TZ_ENABLE_NS" "FSBL/Inc/stm32_extmem_conf.h"
+require_literal "#define EXTMEM_LRUN_SOURCE_ADDRESS_NS      0x00180000u" "FSBL/Inc/stm32_extmem_conf.h"
+require_literal "#define EXTMEM_LRUN_DESTINATION_ADDRESS_NS 0x34100000u" "FSBL/Inc/stm32_extmem_conf.h"
 
 if grep -R -E -q 'htim2|MX_TIM2|S_TIM2|PA15\(JTDI\)|TIM2_CH' App AppNS "$ioc"; then
   fail "obsolete TIM2 servo routing remains in the runtime project"

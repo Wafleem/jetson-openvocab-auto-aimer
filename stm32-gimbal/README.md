@@ -18,6 +18,10 @@ neutral pulses. Both outputs are on ordinary Nucleo expansion-header pins; see
 [docs/pinout.md](docs/pinout.md). The CDC reader accepts the same raw 29-byte `SP` frames used by
 `nyush-rm-control/scripts/sentry_bridge.py`.
 
+The LRUN flash layout follows ST's Nucleo TrustZone template. The signed secure image starts at
+external-flash offset `0x00100000` and the signed non-secure image at `0x00180000`; each slot is
+512 KiB. The FSBL copies them to AXI SRAM1 and AXI SRAM2 respectively before entering AppS.
+
 ## CubeMX regeneration checklist
 
 1. Keep the `SecureNSecure` contexts: boot in FSBL, secure handoff in AppS, and the runtime in AppNS.
