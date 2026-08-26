@@ -5,7 +5,13 @@ FROM nvcr.io/nvidia/pytorch:25.08-py3
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        cmake \
+        curl \
+        git \
+        gnupg \
     && curl -fsSL https://repo.download.nvidia.com/jetson/jetson-ota-public.asc \
         | gpg --dearmor > /usr/share/keyrings/nvidia-jetson-ota-public.gpg \
     && printf 'deb [signed-by=/usr/share/keyrings/nvidia-jetson-ota-public.gpg] https://repo.download.nvidia.com/jetson/common r39.2 main\n' \
@@ -15,7 +21,11 @@ RUN apt-get update \
     && pip3 uninstall -y tensorrt \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install "transformers<5" onnx \
+RUN pip3 install \
+        "accelerate>=1.2,<2" \
+        "sentencepiece>=0.2,<1" \
+        "transformers>=4.48,<5" \
+        onnx \
     && pip3 install --no-build-isolation \
         git+https://github.com/NVIDIA-AI-IOT/torch2trt@4e820ae31b4e35d59685935223b05b2e11d47b03 \
     && TORCH2TRT_FILE="$(python3 -c \
@@ -32,6 +42,20 @@ RUN pip3 install "transformers<5" onnx \
         'import inspect, nanoowl.owl_predictor; print(inspect.getfile(nanoowl.owl_predictor))')" \
     && sed -i 's/opset_version=onnx_opset/opset_version=onnx_opset,\n            dynamo=False/' \
         "$NANOOWL_FILE"
+
+# PyPI's aarch64 bitsandbytes wheel targets server ARM rather than Jetson L4T.
+# Build the CUDA extension for Orin's SM87 in the target environment instead.
+ARG BITSANDBYTES_VERSION=0.50.1
+RUN git clone --branch "$BITSANDBYTES_VERSION" --depth 1 \
+        https://github.com/bitsandbytes-foundation/bitsandbytes.git /tmp/bitsandbytes \
+    && cmake \
+        -DCOMPUTE_BACKEND=cuda \
+        -DCOMPUTE_CAPABILITY=87 \
+        -S /tmp/bitsandbytes \
+        -B /tmp/bitsandbytes/build \
+    && cmake --build /tmp/bitsandbytes/build --parallel 4 \
+    && pip3 install --no-deps /tmp/bitsandbytes \
+    && rm -rf /tmp/bitsandbytes
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -66,4 +90,5 @@ WORKDIR /app
 COPY aimer.py /app/aimer.py
 COPY gimbal_link.py /app/gimbal_link.py
 COPY targeting.py /app/targeting.py
+COPY vlm_selector.py /app/vlm_selector.py
 CMD ["bash"]

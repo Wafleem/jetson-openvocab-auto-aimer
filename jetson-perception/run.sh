@@ -17,13 +17,16 @@ usage() {
     cat <<'EOF'
 NanoOWL commands:
   ./run.sh setup
+  ./run.sh model-login
   ./run.sh engine
   ./run.sh detect PHOTO "a person,a red mug"
+  ./run.sh vlm PHOTO "the red mug"
   ./run.sh camera-check
   ./run.sh camera "a person,a red mug"
   ./run.sh live "a computer mouse" [--threshold 0.10] [--lock-threshold 0.50]
                                      [--hfov 62.2] [--vfov 37.4]
                                      [--serial /dev/ttyACM0]
+                                     [--vlm-query "the red mug"]
   ./run.sh shell
 
 Run them in that order the first time.
@@ -82,9 +85,20 @@ detect_photo() {
         python3 /app/aimer.py detect /input/image "$prompts"
 }
 
+vlm_photo() {
+    local photo="$1"
+    local query="$2"
+    container -v "$photo:/input/image:ro" "$IMAGE" \
+        python3 /app/aimer.py vlm /input/image "$query"
+}
+
 case "${1:-}" in
     setup)
         "${DOCKER[@]}" build -t "$IMAGE" .
+        ;;
+    model-login)
+        require_setup
+        container -it "$IMAGE" hf auth login
         ;;
     engine)
         require_setup
@@ -103,6 +117,19 @@ case "${1:-}" in
         require_engine
         PHOTO="$(realpath "$2")"
         detect_photo "$PHOTO" "$3"
+        ;;
+    vlm)
+        require_setup
+        if [[ $# -ne 3 ]]; then
+            usage
+            exit 1
+        fi
+        if [[ ! -f "$2" ]]; then
+            echo "Photo not found: $2" >&2
+            exit 1
+        fi
+        PHOTO="$(realpath "$2")"
+        vlm_photo "$PHOTO" "$3"
         ;;
     camera-check)
         camera_check
