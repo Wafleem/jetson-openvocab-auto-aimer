@@ -24,6 +24,12 @@ SEARCHING -> TENTATIVE -> TRACKING -> COASTING -> LOST
 - `LOST` never silently switches to another similar object. Press `R` to search again.
 - When several similar objects are visible, click the desired detection to lock it explicitly.
 
+With `--vlm-query`, automatic acquisition is instead owned by PaliGemma. It localizes the specific
+query in the full frame, and the closest overlapping NanoOWL candidate above `--lock-threshold`
+becomes the track. PaliGemma is deliberately not put in the frame-rate loop: NanoOWL maintains the
+chosen identity until loss, then the VLM is allowed to select again. A manual click can always
+override the search.
+
 This follows the same basic association and shadow-tracking concepts documented for NVIDIA
 DeepStream trackers, while remaining small enough to understand. It cannot prove identity after
 a long, complete occlusion. That later requires appearance features such as NvDCF or Re-ID.
@@ -47,7 +53,7 @@ matching frame restores `TRACKING`. A far-away lookalike is ignored until you cl
 `R` to begin a new search.
 
 The predicted box helps association, but it does not create a valid aim command. This distinction
-is intentional: a future motor may follow measured-and-filtered positions, but should not continue
+is intentional: the motor may follow measured-and-filtered positions, but should not continue
 moving toward a target that the camera cannot currently see.
 
 Do not raise both confidence values at once. Tune `--lock-threshold` first so random objects cannot
@@ -65,7 +71,7 @@ dy = target_y - frame_height / 2
 ```
 
 Positive `dx` means the target is right of center. Positive `dy` means it is below center.
-A 20-pixel deadband turns small errors into zero so the future gimbal does not chatter.
+A 20-pixel deadband turns small errors into zero so the gimbal does not chatter.
 
 Before UART transmission, the calibrated 2D solver converts pixel error into angular error:
 
@@ -74,23 +80,23 @@ yaw_error   = -atan((dx / half_width)  * tan(horizontal_fov / 2))
 pitch_error =  atan((dy / half_height) * tan(vertical_fov / 2))
 ```
 
-The live command displays those errors in degrees, but stores them in radians for the future UART
-packet. Its `62.2 x 37.4` degree defaults are only an initial IMX219 16:9 estimate; use `--hfov` and
-`--vfov` after measuring the clone lens.
+The live command displays those errors in degrees, but sends them in radians in the USB CDC packet.
+Its `62.2 x 37.4` degree defaults are only an initial IMX219 16:9 estimate; use `--hfov` and `--vfov`
+after measuring the clone lens.
 
-`AimSolution` is the future handoff boundary. Only a solution with `valid=True` may be sent to
-the microcontroller. The STM32 will receive yaw/pitch error offsets in radians; it will own PID,
-angle limits, PWM, and the motor update rate.
+`AimSolution` is the handoff boundary. Only a solution with `valid=True` is sent as a tracking
+command. The STM32 receives yaw/pitch error offsets in radians and owns PID, angle limits, PWM,
+and the motor update rate.
 
 ## 3. Detect while moving
 
 The camera source drops old frames, so inference always works from the newest available image.
 NanoOWL continues detecting every processed frame while the tracker associates the selected
-box. During future gimbal movement:
+box. During gimbal movement:
 
 - Keep servo motion slower than the camera can observe.
 - Stop sending movement when the track is `COASTING` or `LOST`.
 - Resume only after NanoOWL confirms the same target again.
 - Keep the deadband and enforce mechanical limits in the STM32.
 
-No servo data is generated yet because no microcontroller is connected.
+If no USB CDC device is provided, the same live path runs perception without emitting commands.

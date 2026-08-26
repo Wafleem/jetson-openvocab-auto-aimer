@@ -24,6 +24,4 @@ one, note it here with the date and reason.
 
 ## Open questions (not yet decided)
 - STT model + how voice capture is wired (mic device, push-to-talk vs. always-on).
-- STM32-to-Jetson telemetry layout.
-- Control loop rate on the STM32.
-- Coordinate sign conventions / which physical servo is pan vs. tilt.
+- Final physical camera FOV and pan/tilt sign calibration on the assembled gimbal.

@@ -4,8 +4,8 @@ Read the root `../AGENTS.md` first.
 
 ## Current milestone
 
-NanoOWL camera tracking and the 2D angular solver work on the Jetson. The current milestone is the
-real USB CDC handoff to the STM32 gimbal. Voice and PaliGemma remain deferred.
+NanoOWL camera tracking, PaliGemma target selection, the 2D angular solver, and the USB CDC handoff
+are implemented. Voice remains deferred.
 
 The complete beginner-facing workflow is:
 
@@ -13,8 +13,11 @@ The complete beginner-facing workflow is:
 ./run.sh setup
 ./run.sh engine
 ./run.sh detect path/to/photo.jpg "a person,a red mug"
+./run.sh model-login
+./run.sh vlm path/to/photo.jpg "the red mug"
 ./run.sh camera "a person,a red mug"
 ./run.sh live "a computer mouse"
+./run.sh live "a mug,a bottle" --vlm-query "the red mug"
 ./run.sh live "a computer mouse" --serial /dev/ttyACM0
 ```
 

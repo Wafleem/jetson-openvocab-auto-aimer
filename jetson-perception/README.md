@@ -1,7 +1,8 @@
 # Jetson: how to run
 
-This folder currently does one thing: use NanoOWL to find text-described objects in a photo.
-Run these commands **on the Jetson**, from this folder.
+This folder uses NanoOWL to find open-vocabulary candidates and can use PaliGemma 2 to select the
+candidate that matches a more specific visual-language query. Run these commands **on the Jetson**,
+from this folder.
 
 This setup targets the Jetson's current JetPack 7 / L4T R39 software.
 
@@ -18,6 +19,23 @@ This setup targets the Jetson's current JetPack 7 / L4T R39 software.
 - `detect` searches one real photo. Separate multiple descriptions with commas.
 
 Later runs only need the `detect` command.
+
+## PaliGemma VLM
+
+PaliGemma is optional for plain NanoOWL detection. To enable it, first accept Google's Gemma license
+on the [PaliGemma 2 model page](https://huggingface.co/google/paligemma2-3b-mix-224), then store your
+Hugging Face token in the mounted model cache:
+
+```bash
+./run.sh model-login
+./run.sh vlm path/to/photo.jpg "the red mug"
+```
+
+The photo command is the direct hardware/model check: it loads the real 4-bit model on CUDA, asks
+PaliGemma to localize the query, and prints the returned pixel boxes. The default model is the 224 px
+PaliGemma 2 3B mix checkpoint; the mix checkpoint is intended for use without additional fine-tuning.
+The container builds bitsandbytes for the Orin GPU instead of installing the incompatible generic
+ARM wheel.
 
 ## CSI camera
 
@@ -51,6 +69,18 @@ A local `NanoOWL Live` window opens when the model is ready. NanoOWL automatical
 stable detection; click a particular box to choose it instead. The window shows the camera
 center, target center, and signed `dx`/`dy` pixel error. Press `R` to release a lost target,
 or press `Q`, `Esc`, or close the window to stop it.
+
+Use PaliGemma when NanoOWL has several plausible candidates and the target needs a more specific
+description:
+
+```bash
+./run.sh live "a mug,a bottle" --vlm-query "the red mug beside the keyboard"
+```
+
+While searching, PaliGemma localizes the specific query and its box is associated with a NanoOWL
+candidate above the lock threshold. NanoOWL then tracks that precise detector box at the normal
+camera rate. PaliGemma runs again after loss, at most once per second by default; change that with
+`--vlm-interval SECONDS`. Manual click selection remains available.
 
 The CDC handoff converts that pixel error to yaw/pitch angular error using the calibrated camera
 field of view. Raw pixels are not the controller packet.
@@ -89,10 +119,11 @@ ribbon. The gold contacts on the Jetson's 22-pin connector must face the board.
 |------|---------|
 | `run.sh` | The only command you need to use. |
 | `aimer.py` | Builds the engine and runs detection. |
+| `vlm_selector.py` | Runs PaliGemma localization and associates its output with NanoOWL boxes. |
 | `Dockerfile` | Installs the Jetson/NanoOWL dependencies. |
 | `models/` | Stores the generated TensorRT engine. |
 
-Voice input and PaliGemma are not implemented yet.
+Voice input is not implemented yet; queries are supplied as command-line text.
 
 ## Useful commands
 
