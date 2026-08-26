@@ -48,10 +48,10 @@ void MX_GPDMA1_Init(void)
 
   /* USER CODE END GPDMA1_Init 1 */
   handle_GPDMA1_Channel1.Instance = GPDMA1_Channel1;
-  handle_GPDMA1_Channel1.Init.Request = DMA_REQUEST_SW;
+  handle_GPDMA1_Channel1.Init.Request = GPDMA1_REQUEST_UCPD1_TX;
   handle_GPDMA1_Channel1.Init.BlkHWRequest = DMA_BREQ_SINGLE_BURST;
-  handle_GPDMA1_Channel1.Init.Direction = DMA_MEMORY_TO_MEMORY;
-  handle_GPDMA1_Channel1.Init.SrcInc = DMA_SINC_FIXED;
+  handle_GPDMA1_Channel1.Init.Direction = DMA_MEMORY_TO_PERIPH;
+  handle_GPDMA1_Channel1.Init.SrcInc = DMA_SINC_INCREMENTED;
   handle_GPDMA1_Channel1.Init.DestInc = DMA_DINC_FIXED;
   handle_GPDMA1_Channel1.Init.SrcDataWidth = DMA_SRC_DATAWIDTH_BYTE;
   handle_GPDMA1_Channel1.Init.DestDataWidth = DMA_DEST_DATAWIDTH_BYTE;
@@ -66,11 +66,11 @@ void MX_GPDMA1_Init(void)
     Error_Handler();
   }
   handle_GPDMA1_Channel0.Instance = GPDMA1_Channel0;
-  handle_GPDMA1_Channel0.Init.Request = DMA_REQUEST_SW;
+  handle_GPDMA1_Channel0.Init.Request = GPDMA1_REQUEST_UCPD1_RX;
   handle_GPDMA1_Channel0.Init.BlkHWRequest = DMA_BREQ_SINGLE_BURST;
-  handle_GPDMA1_Channel0.Init.Direction = DMA_MEMORY_TO_MEMORY;
+  handle_GPDMA1_Channel0.Init.Direction = DMA_PERIPH_TO_MEMORY;
   handle_GPDMA1_Channel0.Init.SrcInc = DMA_SINC_FIXED;
-  handle_GPDMA1_Channel0.Init.DestInc = DMA_DINC_FIXED;
+  handle_GPDMA1_Channel0.Init.DestInc = DMA_DINC_INCREMENTED;
   handle_GPDMA1_Channel0.Init.SrcDataWidth = DMA_SRC_DATAWIDTH_BYTE;
   handle_GPDMA1_Channel0.Init.DestDataWidth = DMA_DEST_DATAWIDTH_BYTE;
   handle_GPDMA1_Channel0.Init.Priority = DMA_LOW_PRIORITY_LOW_WEIGHT;
