@@ -136,10 +136,10 @@ void GimbalControlTask(void *argument)
     Error_Handler();
   }
   output = GimbalControl_GetOutput(&control);
-  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, output.yaw_pulse_us);
-  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, output.pitch_pulse_us);
-  if ((HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1) != HAL_OK) ||
-      (HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2) != HAL_OK))
+  __HAL_TIM_SET_COMPARE(&htim14, TIM_CHANNEL_1, output.yaw_pulse_us);
+  __HAL_TIM_SET_COMPARE(&htim16, TIM_CHANNEL_1, output.pitch_pulse_us);
+  if ((HAL_TIM_PWM_Start(&htim14, TIM_CHANNEL_1) != HAL_OK) ||
+      (HAL_TIM_PWM_Start(&htim16, TIM_CHANNEL_1) != HAL_OK))
   {
     Error_Handler();
   }
@@ -165,8 +165,8 @@ void GimbalControlTask(void *argument)
     }
 
     output = GimbalControl_GetOutput(&control);
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, output.yaw_pulse_us);
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, output.pitch_pulse_us);
+    __HAL_TIM_SET_COMPARE(&htim14, TIM_CHANNEL_1, output.yaw_pulse_us);
+    __HAL_TIM_SET_COMPARE(&htim16, TIM_CHANNEL_1, output.pitch_pulse_us);
 
     telemetry.mode = output.mode;
     telemetry.status_flags = 0U;

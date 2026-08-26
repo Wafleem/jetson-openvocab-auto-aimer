@@ -8,14 +8,13 @@ STM32CubeN6 1.2.0, and X-CUBE-FREERTOS 1.3.1. Context ownership is intentional:
 - `FSBL/` contains boot and external-memory setup only.
 - `AppS/` contains the generated secure FreeRTOS companion.
 - `AppNS/` contains the runtime peripherals and integration: FreeRTOS, USBX CDC ACM, UCPD/USB-PD,
-  TIM2 PWM, and the generated hooks into `App/`.
+  TIM14/TIM16 PWM, and the generated hooks into `App/`.
 - `App/` contains the handwritten SP stream parser, latest-value FreeRTOS message queue, CDC reader,
   telemetry writer, servo PID/control task, and PWM startup. CubeMX regeneration must not overwrite
   this directory.
 
-TIM2 CH1 on PA15 and TIM2 CH2 on PC0 produce 50 Hz PWM with 1500 us neutral pulses. This timer
-configuration is electrically correct, but PA15 is routed to the Nucleo debug connector rather than
-an ordinary expansion header. Regenerate the PWM pins before wiring servos; see
+TIM14 CH1 on PG2 (Arduino D11) and TIM16 CH1 on PA3 (Arduino D10) produce 50 Hz PWM with 1500 us
+neutral pulses. Both outputs are on ordinary Nucleo expansion-header pins; see
 [docs/pinout.md](docs/pinout.md). The CDC reader accepts the same raw 29-byte `SP` frames used by
 `nyush-rm-control/scripts/sentry_bridge.py`.
 
@@ -24,9 +23,9 @@ an ordinary expansion header. Regenerate the PWM pins before wiring servos; see
 1. Keep the `SecureNSecure` contexts: boot in FSBL, secure handoff in AppS, and the runtime in AppNS.
 2. Keep USB1 OTG HS, UCPD1, USB-PD, USBX CDC ACM, and FreeRTOS CMSIS-RTOS2 in AppNS. Keep the
    USB-PD time base on TIM1.
-3. Replace the two TIM2 PWM outputs with AppNS `PG2 / TIM14_CH1` (Arduino D11) and
-   `PA3 / TIM16_CH1` (Arduino D10). For a 400 MHz timer clock, use prescaler `399`, period `19999`,
-   PWM mode 1, high polarity, and pulse `1500` on both timers.
+3. Keep AppNS `PG2 / TIM14_CH1` (Arduino D11) and `PA3 / TIM16_CH1` (Arduino D10). For the 400 MHz
+   timer clock, keep prescaler `399`, period `19999`, PWM mode 1, high polarity, and pulse `1500` on
+   both timers.
 4. Generate STM32CubeIDE project metadata and ensure `App/*.c` is compiled into AppNS with `App/`
    on the include path. Do not add `App/` to FSBL or AppS.
 5. Check `AppNS/Src/usbpd_dpm_core.c` after generation. `USBPD_DPM_InitOS()` must create the CAD
@@ -40,7 +39,7 @@ full `project generate` path exhausted or stalled in its Java process on this Wi
 generated source tree and IOC are checked in without claiming that the CLI produced IDE/CMake
 project metadata. Application changes belong only in CubeMX user-code regions or `App/`.
 
-See [docs/pinout.md](docs/pinout.md) for the planned peripherals/wiring and the root
+See [docs/pinout.md](docs/pinout.md) for the peripherals/wiring and the root
 [../AGENTS.md](../AGENTS.md) + [../docs/](../docs/) for the full system design and SP protocol contract.
 
 ## Host validation

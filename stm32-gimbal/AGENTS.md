@@ -4,7 +4,7 @@ Gimbal control firmware for the STM32N6 Nucleo. C, STM32CubeIDE + CubeMX (HAL), 
 Read the root [../AGENTS.md](../AGENTS.md) first.
 
 > **Status: generated and integrated.** The CubeMX multicontext project, AppNS USB CDC reader,
-> FreeRTOS data sharing, servo control task, and TIM2 PWM startup are checked in.
+> FreeRTOS data sharing, servo control task, telemetry, and TIM14/TIM16 PWM startup are checked in.
 
 ## Runtime role
 Receive **yaw/pitch angular error offsets** from the Jetson over USB CDC, run **two positional PID loops**
