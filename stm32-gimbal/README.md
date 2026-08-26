@@ -73,8 +73,11 @@ IOC: STM32CubeN6 1.2.0 and X-CUBE-FREERTOS 1.3.1.
 ```bash
 ./tools/fetch-validation-deps.sh
 ARM_GCC=/path/to/arm-none-eabi-gcc ./tools/validate.sh
+ARM_GCC=/path/to/arm-none-eabi-gcc ./tools/build-target.sh
 ```
 
 Install Arm's GNU toolchain with its bundled Newlib headers; on macOS, the Homebrew
 `gcc-arm-embedded` cask provides that distribution. `validate.sh` also runs the sanitizer-backed host
 tests and checks that the IOC retains the expansion-header PWM routing and USB-PD initialization.
+`build-target.sh` then links real FSBL, AppS, and AppNS ELFs and emits their raw binaries under
+`build/target/`.
