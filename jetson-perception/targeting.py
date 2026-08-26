@@ -153,10 +153,12 @@ class TargetTracker:
         confirmation_hits: int = 2,
         max_misses: int = 8,
         min_lock_score: float = 0.5,
+        automatic_lock: bool = True,
     ) -> None:
         self.confirmation_hits = confirmation_hits
         self.max_misses = max_misses
         self.min_lock_score = min_lock_score
+        self.automatic_lock = automatic_lock
         self._next_id = 1
         self.reset()
 
@@ -215,6 +217,8 @@ class TargetTracker:
 
     def update(self, detections: list[Detection], frame_size: tuple[int, int]) -> None:
         if self.state == "LOST":
+            if not self.automatic_lock:
+                return
             strong_detections = [
                 detection for detection in detections if detection.score >= self.min_lock_score
             ]
@@ -229,6 +233,8 @@ class TargetTracker:
             return
 
         if self.box is None:
+            if not self.automatic_lock:
+                return
             candidates = [
                 detection for detection in detections if detection.score >= self.min_lock_score
             ]
