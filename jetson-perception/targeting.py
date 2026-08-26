@@ -1,5 +1,7 @@
 """Small, detector-driven target lock and camera-centering math."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from math import atan, hypot, radians, tan
 from typing import Iterable

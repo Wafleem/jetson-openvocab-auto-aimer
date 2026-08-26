@@ -1,5 +1,7 @@
 """Build NanoOWL's engine or run detection on a photo or local CSI feed."""
 
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
 
