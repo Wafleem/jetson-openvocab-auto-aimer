@@ -57,3 +57,18 @@ ctest --test-dir build/host --output-on-failure
 
 These deterministic tests validate the firmware core; they do not replace the board checks for USB
 enumeration, physical PWM timing, servo direction, supply integrity, or tuned gains.
+
+## Arm target validation
+
+The target check compiles every handwritten, AppNS, AppS, and FSBL C translation unit into a real
+Cortex-M55 object with warnings treated as errors. It uses the exact Cube packages recorded by the
+IOC: STM32CubeN6 1.2.0 and X-CUBE-FREERTOS 1.3.1.
+
+```bash
+./tools/fetch-validation-deps.sh
+ARM_GCC=/path/to/arm-none-eabi-gcc ./tools/validate.sh
+```
+
+Install Arm's GNU toolchain with its bundled Newlib headers; on macOS, the Homebrew
+`gcc-arm-embedded` cask provides that distribution. `validate.sh` also runs the sanitizer-backed host
+tests and checks that the IOC retains the expansion-header PWM routing and USB-PD initialization.
