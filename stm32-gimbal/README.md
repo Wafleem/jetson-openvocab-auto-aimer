@@ -74,10 +74,23 @@ IOC: STM32CubeN6 1.2.0 and X-CUBE-FREERTOS 1.3.1.
 ./tools/fetch-validation-deps.sh
 ARM_GCC=/path/to/arm-none-eabi-gcc ./tools/validate.sh
 ARM_GCC=/path/to/arm-none-eabi-gcc ./tools/build-target.sh
+STM32_SIGNING_TOOL=/path/to/STM32_SigningTool_CLI ./tools/sign-images.sh
 ```
 
 Install Arm's GNU toolchain with its bundled Newlib headers; on macOS, the Homebrew
 `gcc-arm-embedded` cask provides that distribution. `validate.sh` also runs the sanitizer-backed host
 tests and checks that the IOC retains the expansion-header PWM routing and USB-PD initialization.
 `build-target.sh` then links real FSBL, AppS, and AppNS ELFs and emits their raw binaries under
-`build/target/`.
+`build/target/`. The signing script applies ST's FSBL header version 2.3 to all three images.
+
+For boot from external flash, program the signed images with STM32CubeProgrammer at these addresses:
+
+| Image | External flash address |
+| --- | ---: |
+| `fsbl-trusted.bin` | `0x70000000` |
+| `app_s-trusted.bin` | `0x70100000` |
+| `app_ns-trusted.bin` | `0x70180000` |
+
+The application slots are 512 KiB each and `build-target.sh` rejects an image that outgrows its
+slot. Signing and programming require STM32CubeProgrammer and an attached board; neither operation
+is part of the host validation.
