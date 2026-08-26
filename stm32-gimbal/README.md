@@ -20,7 +20,9 @@ neutral pulses. Both outputs are on ordinary Nucleo expansion-header pins; see
 
 The LRUN flash layout follows ST's Nucleo TrustZone template. The signed secure image starts at
 external-flash offset `0x00100000` and the signed non-secure image at `0x00180000`; each slot is
-512 KiB. The FSBL copies them to AXI SRAM1 and AXI SRAM2 respectively before entering AppS.
+512 KiB. The FSBL copies them to AXI SRAM1 and AXI SRAM2 respectively before entering AppS. AppS
+marks AXI SRAM2, the command-link peripherals, the two PWM timers, and their GPIO pins non-secure
+before it jumps to AppNS.
 
 ## CubeMX regeneration checklist
 

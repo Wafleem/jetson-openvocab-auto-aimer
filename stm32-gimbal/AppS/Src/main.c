@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "gpdma.h"
+#include "rif.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -72,6 +73,9 @@ int main(void)
 
   /* USER CODE END 1 */
 
+  /* Enable BusFault and SecureFault handlers (HardFault is always enabled). */
+  SCB->SHCSR |= SCB_SHCSR_BUSFAULTENA_Msk | SCB_SHCSR_SECUREFAULTENA_Msk;
+
   /* MCU Configuration--------------------------------------------------------*/
   HAL_Init();
 
@@ -84,8 +88,9 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
   MX_GPDMA1_Init();
+  SystemIsolation_Config();
+  MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
