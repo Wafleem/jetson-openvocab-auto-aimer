@@ -45,6 +45,10 @@ full `project generate` path exhausted or stalled in its Java process on this Wi
 generated source tree and IOC are checked in without claiming that the CLI produced IDE/CMake
 project metadata. Application changes belong only in CubeMX user-code regions or `App/`.
 
+Use `./tools/generate-cubemx.sh` for future regeneration. It checks that the installed CubeMX
+release matches the IOC and refuses unsafe database migrations; CubeMX 6.18.1 currently invalidates
+this project's STM32N6 USB-PD configuration. Run `./tools/build-target.sh` after regeneration.
+
 See [docs/pinout.md](docs/pinout.md) for the peripherals/wiring and the root
 [../AGENTS.md](../AGENTS.md) + [../docs/](../docs/) for the full system design and SP protocol contract.
 
