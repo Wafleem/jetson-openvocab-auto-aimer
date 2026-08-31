@@ -123,7 +123,7 @@ ribbon. The gold contacts on the Jetson's 22-pin connector must face the board.
 | `Dockerfile` | Installs the Jetson/NanoOWL dependencies. |
 | `models/` | Stores the generated TensorRT engine. |
 
-Voice input is not implemented yet; queries are supplied as command-line text.
+The command-line interface accepts target text from the query input pipeline.
 
 ## Useful commands
 
