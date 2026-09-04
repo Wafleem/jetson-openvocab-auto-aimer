@@ -88,7 +88,8 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_GPDMA1_Init();
-  MX_TIM2_Init();
+  MX_TIM14_Init();
+  MX_TIM16_Init();
   MX_UCPD1_Init();
   if (USBPD_PreInitOs() != USBPD_OK)
   {

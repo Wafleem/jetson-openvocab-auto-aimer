@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from targeting import solve_aim
+from targeting import Detection, TargetTracker, solve_aim
 
 
 class SolveAimTests(unittest.TestCase):
@@ -39,6 +39,26 @@ class SolveAimTests(unittest.TestCase):
     def test_invalid_fov_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             solve_aim((0, 0, 10, 10), 1280, 720, 180.0, 37.4)
+
+
+class TargetTrackerLockPolicyTests(unittest.TestCase):
+    def test_disabled_automatic_lock_waits_for_explicit_choice(self) -> None:
+        detection = Detection(0, 0.95, (100.0, 100.0, 300.0, 300.0))
+        tracker = TargetTracker(automatic_lock=False)
+
+        tracker.update([detection], (1280, 720))
+
+        self.assertEqual(tracker.state, "SEARCHING")
+        self.assertIsNone(tracker.box)
+
+    def test_explicit_choice_still_locks_when_automatic_lock_is_disabled(self) -> None:
+        detection = Detection(0, 0.95, (100.0, 100.0, 300.0, 300.0))
+        tracker = TargetTracker(automatic_lock=False)
+
+        tracker.lock(detection)
+
+        self.assertEqual(tracker.state, "TRACKING")
+        self.assertEqual(tracker.box, detection.box)
 
 
 if __name__ == "__main__":

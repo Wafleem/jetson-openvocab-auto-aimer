@@ -4,8 +4,8 @@ This is the vendor-neutral context file for any coding agent (Claude, or others)
 working on this repo. Read this first, then the subproject `AGENTS.md` for whichever
 side you're touching. The durable "why" lives in [docs/context/](docs/context/).
 
-> **Current status:** Jetson perception remains scaffolded. `stm32-gimbal/` now contains a
-> CubeMX-generated multicontext project and an AppNS USB CDC/FreeRTOS/PWM runtime.
+> **Current status:** Jetson NanoOWL tracking, PaliGemma target selection, and the USB CDC handoff
+> are implemented. `stm32-gimbal/` contains a validated multicontext USB CDC/FreeRTOS/PWM runtime.
 
 ## What this project is
 A voice-driven open-vocabulary auto-aiming camera gimbal. See [README.md](README.md)

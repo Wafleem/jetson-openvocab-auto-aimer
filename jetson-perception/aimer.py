@@ -1,11 +1,14 @@
 """Build NanoOWL's engine or run detection on a photo or local CSI feed."""
 
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
 
 
 ENGINE = "/models/owl_image_encoder_patch32.engine"
 MODEL = "google/owlvit-base-patch32"
+DEFAULT_VLM_MODEL = "google/paligemma2-3b-mix-224"
 DEFAULT_HORIZONTAL_FOV = 62.2
 DEFAULT_VERTICAL_FOV = 37.4
 
@@ -55,6 +58,20 @@ def detect(image_path: str, prompt_text: str, threshold: float) -> None:
     print(f"Found {len(output.labels)} object(s).")
 
 
+def vlm_detect(image_path: str, query: str, model_name: str) -> None:
+    from PIL import Image
+    from vlm_selector import PaliGemmaSelector
+
+    image = Image.open(image_path).convert("RGB")
+    print(f"Loading PaliGemma: {model_name}", flush=True)
+    localization = PaliGemmaSelector(model_name).locate(image, query)
+    print(f"Model output: {localization.raw_output}")
+    for box in localization.boxes:
+        coordinates = [round(value, 3) for value in box]
+        print(f"{query}: box={coordinates}")
+    print(f"Found {len(localization.boxes)} VLM location(s).")
+
+
 def live(
     prompt_text: str,
     threshold: float,
@@ -62,9 +79,13 @@ def live(
     horizontal_fov: float,
     vertical_fov: float,
     serial_device: str | None,
+    vlm_query: str | None,
+    vlm_model: str,
+    vlm_interval: float,
 ) -> None:
     import os
     from math import degrees
+    from time import monotonic
 
     import cv2
     import torch
@@ -72,10 +93,15 @@ def live(
     from PIL import Image
     from gimbal_link import GimbalLink
     from targeting import Detection, TargetTracker, box_center, solve_aim
+    from vlm_selector import PaliGemmaSelector, select_detection
 
     prompts = [prompt.strip() for prompt in prompt_text.split(",") if prompt.strip()]
     if not prompts:
         raise ValueError("Give at least one prompt, such as 'a computer mouse'")
+    if vlm_query is not None and not vlm_query.strip():
+        raise ValueError("VLM target query cannot be empty")
+    if vlm_interval <= 0.0:
+        raise ValueError("VLM interval must be positive")
 
     pipeline = (
         "nvarguscamerasrc sensor-id=0 wbmode=3 ! "
@@ -103,8 +129,16 @@ def live(
     predictor = OwlPredictor(model_name=MODEL, image_encoder_engine=ENGINE)
     text_encodings = predictor.encode_text(prompts)
     inference_stream = torch.cuda.Stream()
-    tracker = TargetTracker(min_lock_score=lock_threshold)
+    vlm_selector = None
+    if vlm_query is not None:
+        print(f"Loading PaliGemma: {vlm_model}", flush=True)
+        vlm_selector = PaliGemmaSelector(vlm_model)
+    tracker = TargetTracker(
+        min_lock_score=lock_threshold,
+        automatic_lock=vlm_selector is None,
+    )
     gimbal = GimbalLink(serial_device) if serial_device else None
+    next_vlm_time = 0.0
 
     window = "NanoOWL Live"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
@@ -118,9 +152,11 @@ def live(
     cv2.setMouseCallback(window, select_target)
     print("Local live window ready.", flush=True)
     print(
-        f"Detection threshold: {threshold:.2f}; automatic lock threshold: {lock_threshold:.2f}",
+        f"Detection threshold: {threshold:.2f}; lock threshold: {lock_threshold:.2f}",
         flush=True,
     )
+    if vlm_query is not None:
+        print(f'PaliGemma target: "{vlm_query}"', flush=True)
     print(f"2D solver FOV: {horizontal_fov:.1f} x {vertical_fov:.1f} degrees", flush=True)
     if gimbal is not None:
         print(f"Gimbal link: {serial_device}", flush=True)
@@ -151,6 +187,8 @@ def live(
                 )
                 for label, score, box in zip(output.labels, output.scores, output.boxes)
             ]
+            frame_height, frame_width = frame.shape[:2]
+            vlm_boxes = ()
             point = selection["point"]
             if point is not None:
                 under_pointer = [
@@ -163,7 +201,34 @@ def live(
                     tracker.lock(max(under_pointer, key=lambda detection: detection.score))
                 selection["point"] = None
 
-            frame_height, frame_width = frame.shape[:2]
+            now = monotonic()
+            if (
+                vlm_selector is not None
+                and tracker.state in ("SEARCHING", "LOST")
+                and now >= next_vlm_time
+            ):
+                assert vlm_query is not None
+                localization = vlm_selector.locate(image, vlm_query)
+                vlm_boxes = localization.boxes
+                eligible = [
+                    detection
+                    for detection in detections
+                    if detection.score >= lock_threshold
+                ]
+                selected = select_detection(
+                    eligible,
+                    vlm_boxes,
+                    (frame_width, frame_height),
+                )
+                if selected is not None:
+                    tracker.lock(selected)
+                    print(
+                        f"PaliGemma locked {prompts[selected.label]} "
+                        f"at detector score {selected.score:.3f}",
+                        flush=True,
+                    )
+                next_vlm_time = monotonic() + vlm_interval
+
             tracker.update(detections, (frame_width, frame_height))
             solution = solve_aim(
                 tracker.box if tracker.aim_valid else None,
@@ -180,6 +245,19 @@ def live(
                 )
 
             display_frame = frame.copy()
+            for vlm_box in vlm_boxes:
+                x1, y1, x2, y2 = (round(value) for value in vlm_box)
+                cv2.rectangle(display_frame, (x1, y1), (x2, y2), (255, 180, 0), 2)
+                cv2.putText(
+                    display_frame,
+                    "PaliGemma",
+                    (max(4, x1), max(18, y1 - 5)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (255, 180, 0),
+                    1,
+                    cv2.LINE_AA,
+                )
             for detection in detections:
                 x1, y1, x2, y2 = (round(value) for value in detection.box)
                 cv2.rectangle(display_frame, (x1, y1), (x2, y2), (150, 150, 150), 1)
@@ -255,6 +333,7 @@ def live(
             key = cv2.waitKey(1) & 0xFF
             if key == ord("r"):
                 tracker.reset()
+                next_vlm_time = 0.0
             if key in (ord("q"), 27) or cv2.getWindowProperty(window, cv2.WND_PROP_VISIBLE) < 1:
                 break
     except KeyboardInterrupt:
@@ -277,6 +356,11 @@ def main() -> None:
     detect_parser.add_argument("prompts", help="comma-separated object descriptions")
     detect_parser.add_argument("--threshold", type=float, default=0.1)
 
+    vlm_parser = commands.add_parser("vlm", help="localize a target with PaliGemma")
+    vlm_parser.add_argument("image")
+    vlm_parser.add_argument("query", help="target description")
+    vlm_parser.add_argument("--model", default=DEFAULT_VLM_MODEL)
+
     live_parser = commands.add_parser("live", help="show local CSI camera detections")
     live_parser.add_argument("prompts", help="comma-separated object descriptions")
     live_parser.add_argument("--threshold", type=float, default=0.1)
@@ -284,12 +368,17 @@ def main() -> None:
     live_parser.add_argument("--hfov", type=float, default=DEFAULT_HORIZONTAL_FOV)
     live_parser.add_argument("--vfov", type=float, default=DEFAULT_VERTICAL_FOV)
     live_parser.add_argument("--serial", help="USB CDC device, usually /dev/ttyACM0")
+    live_parser.add_argument("--vlm-query", help="let PaliGemma choose the target detection")
+    live_parser.add_argument("--vlm-model", default=DEFAULT_VLM_MODEL)
+    live_parser.add_argument("--vlm-interval", type=float, default=1.0)
 
     args = parser.parse_args()
     if args.command == "engine":
         build_engine()
     elif args.command == "detect":
         detect(args.image, args.prompts, args.threshold)
+    elif args.command == "vlm":
+        vlm_detect(args.image, args.query, args.model)
     else:
         live(
             args.prompts,
@@ -298,6 +387,9 @@ def main() -> None:
             args.hfov,
             args.vfov,
             args.serial,
+            args.vlm_query,
+            args.vlm_model,
+            args.vlm_interval,
         )
 
 

@@ -116,8 +116,8 @@ and [sensor driver guide](https://docs.nvidia.com/jetson/archives/r35.3.1/Develo
 ## STM32 peripheral map
 | Function | Peripheral | Pin(s) | Notes |
 |----------|-----------|--------|-------|
-| Pan servo PWM | TIM2 CH1 | PA15 | 50 Hz, 1000–2000 us pulse |
-| Tilt servo PWM | TIM2 CH2 | PC0 | 50 Hz, 1000–2000 us pulse |
+| Pan servo PWM | TIM14 CH1 | PG2 / Arduino D11 | 50 Hz, 1000–2000 us pulse |
+| Tilt servo PWM | TIM16 CH1 | PA3 / Arduino D10 | 50 Hz, 1000–2000 us pulse |
 | Jetson link | USB1 OTG HS, USBX CDC ACM | USB-C | raw SP protocol bytes |
 | Control tick | FreeRTOS task | — | 20 ms PID/control period |
 
